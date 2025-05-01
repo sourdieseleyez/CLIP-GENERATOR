@@ -1,0 +1,6 @@
+streamlit
+whisper
+transformers
+pytube
+moviepy
+requests
