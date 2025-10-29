@@ -1,0 +1,195 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    CLIP GENERATOR - QUICK REFERENCE                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          GETTING STARTED                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Development Setup (5 minutes):
+  1. setup-backend.bat
+  2. cd frontend && npm install
+  3. Edit backend/.env → Add GEMINI_API_KEY
+  4. QUICK-START.bat
+  5. Visit http://localhost:5173
+
+Production Setup (30 minutes):
+  1. Read PRODUCTION-SETUP.md
+  2. Create Neon database
+  3. Create Cloudflare R2 bucket
+  4. Deploy to Railway + Vercel
+  5. Done!
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          ENVIRONMENT VARIABLES                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Required (Development):
+  SECRET_KEY=your-secret-key
+  GEMINI_API_KEY=your-gemini-key
+
+Optional (Production):
+  DATABASE_URL=postgresql://...
+  STORAGE_BUCKET=your-bucket
+  STORAGE_ACCESS_KEY=your-key
+  STORAGE_SECRET_KEY=your-secret
+  STORAGE_ENDPOINT=https://...
+  STORAGE_REGION=auto
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          USEFUL COMMANDS                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Setup:
+  setup-backend.bat              Install Python dependencies
+  cd frontend && npm install     Install Node dependencies
+
+Testing:
+  test-gemini.bat                Test Gemini API connection
+  test-production-config.bat     Test all configuration
+  CHECK-CONFIG.bat               Verify setup
+
+Running:
+  QUICK-START.bat                Start both servers
+  test-backend.bat               Start backend only
+  test-frontend.bat              Start frontend only
+
+Development:
+  cd backend && python main.py   Run backend manually
+  cd frontend && npm run dev     Run frontend manually
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          SERVICE URLS                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Get API Keys:
+  Gemini:        https://aistudio.google.com/app/apikey
+  
+Setup Services:
+  Neon DB:       https://neon.tech
+  Cloudflare R2: https://dash.cloudflare.com/r2
+  Railway:       https://railway.app
+  Vercel:        https://vercel.com
+
+Local URLs:
+  Frontend:      http://localhost:5173
+  Backend:       http://localhost:8000
+  API Docs:      http://localhost:8000/docs
+  Health Check:  http://localhost:8000/health
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          COST ESTIMATES                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Development:       $0/month (all free tiers)
+100 videos/month:  $6/month
+500 videos/month:  $35/month
+1000 videos/month: $76/month
+5000 videos/month: $374/month
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          TROUBLESHOOTING                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+"Video processor not initialized"
+  → Check GEMINI_API_KEY in backend/.env
+  → Run: test-gemini.bat
+
+"Database connection failed"
+  → Check DATABASE_URL format
+  → Verify Neon project is active
+  → Run: test-production-config.bat
+
+"Storage upload failed"
+  → Check STORAGE_* variables
+  → Verify R2 bucket exists
+  → Check bucket permissions
+
+"CORS error in browser"
+  → Add frontend URL to CORS whitelist in main.py
+  → Redeploy backend
+
+"Module not found"
+  → Run: setup-backend.bat
+  → Or: pip install -r backend/requirements.txt
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          FILE STRUCTURE                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+CLIP-GENERATOR/
+├── backend/
+│   ├── main.py                 FastAPI app
+│   ├── gemini_processor.py     Gemini 2.5 Flash Lite
+│   ├── storage.py              Cloud storage (R2/S3)
+│   ├── database.py             PostgreSQL models
+│   ├── requirements.txt        Python deps
+│   └── .env                    Config (create from .env.example)
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx             Main component
+│   │   └── config.js           API config
+│   └── package.json
+├── PRODUCTION-SETUP.md         Complete setup guide
+├── SETUP-SUMMARY.md            Quick overview
+├── README.md                   Main documentation
+└── *.bat                       Helper scripts
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          KEY FEATURES                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+✅ Gemini 2.5 Flash Lite (133x cheaper than GPT-4)
+✅ OpenAI Whisper transcription
+✅ PostgreSQL database (Neon)
+✅ Cloud storage (Cloudflare R2)
+✅ No temp file issues
+✅ Production ready
+✅ Auto-scaling
+✅ Cost optimized
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          DOCUMENTATION                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+README.md                Main documentation
+PRODUCTION-SETUP.md      Complete production guide
+SETUP-SUMMARY.md         Quick overview
+GET-STARTED.md           Getting started guide
+ARCHITECTURE-FIXED.txt   Architecture diagram
+QUICK-REFERENCE.txt      This file
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          SUPPORT                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Documentation:  See /docs folder
+Issues:         GitHub Issues
+Tests:          Run test-*.bat scripts
+Config Check:   Run CHECK-CONFIG.bat
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          READY TO START!                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Quick Start:
+  1. setup-backend.bat
+  2. Add GEMINI_API_KEY to backend/.env
+  3. QUICK-START.bat
+  4. Visit http://localhost:5173
+
+For Production:
+  See PRODUCTION-SETUP.md
+
+Need Help?
+  Run: CHECK-CONFIG.bat

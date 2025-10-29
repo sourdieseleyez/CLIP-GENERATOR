@@ -2,10 +2,11 @@ import os
 import requests
 import tempfile
 from typing import Tuple
+import json
 
 import streamlit as st
 import whisper
-from transformers import pipeline
+import openai
 from pytube import YouTube
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from moviepy.video.fx.crop import crop
@@ -25,6 +26,7 @@ st.write(
 GIPHY_API_KEY = st.secrets.get("GIPHY_API_KEY", "")
 FREESOUND_API_KEY = st.secrets.get("FREESOUND_API_KEY", "")
 PIXABAY_API_KEY = st.secrets.get("PIXABAY_API_KEY", "")
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")
 
 
 # ─── Daily-cached fetchers (TTL = 24 h) ───
@@ -49,7 +51,8 @@ def fetch_free_sounds(limit: int = 8):
         f"&page_size={limit}&token={FREESOUND_API_KEY}"
     )
     results = requests.get(url).json().get("results", [])
-    return [{"name": r["name"], "preview": r["previews"]["preview-lq-mp3"]} for r in results]
+    return [{"name": r["name"], "preview": r["previews"]["preview-lq-mp3"]}
+            for r in results]
 
 
 @st.cache_data(ttl=24 * 60 * 60)
@@ -68,8 +71,40 @@ def fetch_logo_templates(limit: int = 8):
 @st.cache_resource
 def load_models() -> Tuple[object, object]:
     whisper_model = whisper.load_model("tiny")
-    sentiment_model = pipeline("sentiment-analysis")
-    return whisper_model, sentiment_model
+    return whisper_model
+
+# ─── GPT-5 mini segment selection ───
+def get_viral_segments(transcription: str, num_clips: int) -> list:
+    if not OPENAI_API_KEY:
+        st.error("Please add your OpenAI API key to the Streamlit secrets.")
+        st.stop()
+
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+    prompt = f'''
+You are a viral video expert. Your task is to identify the most interesting, controversial, or emotionally charged moments in a video transcription.
+The transcription is provided below. Please identify the top {num_clips} moments.
+For each moment, provide the start and end timestamps of the segment containing the moment.
+Also, include the text of the segment.
+Your response should be a JSON array of objects, where each object has the following keys: "start", "end", and "text".
+It is crucial that you return a valid JSON array.
+
+Transcription:
+{transcription}
+'''
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-5-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that returns JSON."},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        st.error(f"An error occurred while communicating with the OpenAI API: {e}")
+        st.stop()
 
 
 # ─── Helpers: download sources ───
@@ -83,7 +118,10 @@ def download_youtube(url: str) -> str:
     )
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
     # pytube's download writes to filename in output_path
-    stream.download(output_path=os.path.dirname(tmp.name), filename=os.path.basename(tmp.name))
+    stream.download(
+        output_path=os.path.dirname(
+            tmp.name), filename=os.path.basename(
+            tmp.name))
     return tmp.name
 
 
@@ -113,9 +151,27 @@ RESOLUTION_MAP = {
 mode = st.radio("Video input", ("Upload file", "YouTube URL", "Direct URL"))
 video_path = None
 if mode == "Upload file":
-    vid = st.file_uploader("Choose a video", type=["mp4", "mov", "mkv", "avi", "flv", "wmv", "m4v", "webm", "mpeg", "mpg", "3gp", "ts"])
+    vid = st.file_uploader(
+        "Choose a video",
+        type=[
+            "mp4",
+            "mov",
+            "mkv",
+            "avi",
+            "flv",
+            "wmv",
+            "m4v",
+            "webm",
+            "mpeg",
+            "mpg",
+            "3gp",
+            "ts"])
     if vid:
-        tmp = tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=os.path.splitext(vid.name)[1])
+        tmp = tempfile.NamedTemporaryFile(
+            mode="wb",
+            delete=False,
+            suffix=os.path.splitext(
+                vid.name)[1])
         tmp.write(vid.read())
         tmp.close()
         video_path = tmp.name
@@ -140,7 +196,7 @@ else:
 
 
 # Load Whisper & sentiment models
-whisper_model, sentiment_model = load_models()
+whisper_model = load_models()
 
 
 if st.button("Process & Show Top Segments"):
@@ -148,30 +204,24 @@ if st.button("Process & Show Top Segments"):
         result = whisper_model.transcribe(video_path)
 
     # Score & pick top segments
-    segments = sorted(
-        [
-            {
-                "start": s["start"],
-                "end": s["end"],
-                "text": s["text"].strip(),
-                "score": sentiment_model(s["text"])[0]["score"],
-            }
-            for s in result.get("segments", [])
-        ],
-        key=lambda x: x["score"],
-        reverse=True,
-    )[:NUM_CLIPS]
+    segments = get_viral_segments(result["text"], NUM_CLIPS)
+
 
     # UI: length & resolution selectors
     clip_len = st.selectbox("Clip length (s)", LENGTH_OPTIONS, index=1)
-    res_opts = st.multiselect("Resolutions", list(RESOLUTION_MAP.keys()), default=["1080p"])
+    res_opts = st.multiselect(
+        "Resolutions",
+        list(
+            RESOLUTION_MAP.keys()),
+        default=["1080p"])
 
     # Build segment choices
     choices = [
-        f"{i+1}: {seg['start']:.1f}s | \"{seg['text'][:50]}...\" (score {seg['score']:.2f})"
+        f"{i + 1}: {seg['start']:.1f}s | \"{seg['text'][:50]}...\""
         for i, seg in enumerate(segments)
     ]
-    selected = st.multiselect("Select segments to export:", choices, default=choices[:3])
+    selected = st.multiselect(
+        "Select segments to export:", choices, default=choices[:3])
 
     # Generate & export
     if st.button("Generate & Export Clips"):
@@ -189,17 +239,31 @@ if st.button("Process & Show Top Segments"):
                     seg["text"], fontsize=24, font="Arial", method="caption", size=(int(clip.w * 0.8), None)
                 ),
             )
-            final = CompositeVideoClip([clip, subtitle.set_pos(("center", "bottom"))])
+            final = CompositeVideoClip(
+                [clip, subtitle.set_pos(("center", "bottom"))])
 
             for res in res_opts:
                 w, h = RESOLUTION_MAP[res]
-                for tag, (ow, oh) in {"landscape": (w, h), "portrait": (h, w), "square": (h, h)}.items():
+                for tag, (ow, oh) in {
+                    "landscape": (
+                        w, h), "portrait": (
+                        h, w), "square": (
+                        h, h)}.items():
                     out_clip = final.resize(width=ow)
                     out_clip = crop(
-                        out_clip, width=ow, height=oh, x_center=out_clip.w / 2, y_center=out_clip.h / 2
-                    )
-                    out_path = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{res}_{tag}.mp4").name
-                    out_clip.write_videofile(out_path, codec="libx264", audio_codec="aac", verbose=False, logger=None)
+                        out_clip,
+                        width=ow,
+                        height=oh,
+                        x_center=out_clip.w / 2,
+                        y_center=out_clip.h / 2)
+                    out_path = tempfile.NamedTemporaryFile(
+                        delete=False, suffix=f"_{res}_{tag}.mp4").name
+                    out_clip.write_videofile(
+                        out_path,
+                        codec="libx264",
+                        audio_codec="aac",
+                        verbose=False,
+                        logger=None)
                     st.video(out_path)
 
         st.success("Clips generated and formatted!")
@@ -212,7 +276,14 @@ st.subheader("🎯 Trending Media (refreshes every 24 h)")
 with st.expander("📺 Trending GIFs"):
     gifs = fetch_trending_gifs()
     if gifs:
-        st.image(gifs, width=150, caption=[f"GIF #{i+1}" for i in range(len(gifs))])
+        st.image(
+            gifs,
+            width=150,
+            caption=[
+                f"GIF #{
+                    i +
+                    1}" for i in range(
+                    len(gifs))])
     else:
         st.info("Add GIPHY_API_KEY to Secrets to see GIFs.")
 
@@ -228,6 +299,13 @@ with st.expander("🔊 Copyright-Free Sounds"):
 with st.expander("🎨 Free Logo Templates"):
     logos = fetch_logo_templates()
     if logos:
-        st.image(logos, width=150, caption=[f"Logo #{i+1}" for i in range(len(logos))])
+        st.image(
+            logos,
+            width=150,
+            caption=[
+                f"Logo #{
+                    i +
+                    1}" for i in range(
+                    len(logos))])
     else:
         st.info("Add PIXABAY_API_KEY to Secrets to see logo templates.")
