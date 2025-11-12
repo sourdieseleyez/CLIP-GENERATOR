@@ -15,32 +15,59 @@ import os
 import json
 import tempfile
 import whisper
+import ffmpeg_helpers
+import subtitles
+import scene_detection
+import emotion_detector
+# Optional faster-whisper import
+try:
+    from faster_whisper import WhisperModel as FasterWhisperModel
+except Exception:
+    FasterWhisperModel = None
+import shutil
+import uuid
 from pytube import YouTube
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
-from moviepy.video.fx.crop import crop
 from typing import List, Dict, Optional, Callable
 import requests
 import google.generativeai as genai
 
+# Optional import for yt-dlp to support many streaming sites (Kick, Twitch, etc.)
+try:
+    import yt_dlp as ytdlp
+except Exception:
+    ytdlp = None
+
 
 class GeminiVideoProcessor:
-    def __init__(self, gemini_api_key: str):
+    def __init__(self, gemini_api_key: str, stt_engine: str = "whisper"):
         self.gemini_api_key = gemini_api_key
         self.whisper_model = None
+        self.stt_engine = stt_engine or "whisper"
         genai.configure(api_key=gemini_api_key)
-        
+
         # Use Gemini 2.5 Flash Lite - cheapest option with streaming support
         # 133x cheaper than GPT-4!
         self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
     
     def load_whisper_model(self):
-        """Load Whisper model for transcription"""
-        if self.whisper_model is None:
-            print("Loading Whisper model...")
-            # Use 'base' for good balance of speed/accuracy
-            # Use 'tiny' for fastest processing
-            # Use 'small' for better accuracy
+        """Load the configured STT model for transcription"""
+        if self.whisper_model is not None:
+            return self.whisper_model
+
+        print(f"Loading STT model: {self.stt_engine}...")
+        # Local OpenAI whisper
+        if self.stt_engine == "whisper" or self.stt_engine == "openai-whisper":
             self.whisper_model = whisper.load_model("base")
+            return self.whisper_model
+
+        # faster-whisper (if available)
+        if self.stt_engine == "faster-whisper" and FasterWhisperModel is not None:
+            # load a reasonably small model by default
+            self.whisper_model = FasterWhisperModel("small")
+            return self.whisper_model
+
+        # Fallback to whisper
+        self.whisper_model = whisper.load_model("base")
         return self.whisper_model
     
     def download_youtube_video(self, url: str) -> str:
@@ -67,23 +94,125 @@ class GeminiVideoProcessor:
         except Exception as e:
             raise Exception(f"Failed to download YouTube video: {str(e)}")
     
-    def download_video_from_url(self, url: str) -> str:
-        """Download video from direct URL"""
+    def download_video_from_url(self, url: str, cookies_text: Optional[str] = None, extra_headers: Optional[dict] = None) -> str:
+        """Download video from a URL or page.
+
+        If `cookies_text` is provided it should be the contents of a Netscape-format
+        cookies.txt file and will be written to a temp file and passed to yt-dlp.
+        `extra_headers` is a dict of HTTP headers to set when using yt-dlp or
+        when falling back to a direct requests download.
+        """
+        cookiefile = None
         try:
+            # Prepare headers
+            headers = None
+            if extra_headers:
+                # ensure keys/values are strings
+                headers = {str(k): str(v) for k, v in extra_headers.items()}
+
+            # If cookies_text provided, write to a temporary cookie file
+            if cookies_text:
+                cookiefile = tempfile.NamedTemporaryFile(delete=False, suffix="_cookies.txt")
+                cookiefile.write(cookies_text.encode('utf-8'))
+                cookiefile.close()
+
+            # Some URLs (YouTube, Kick, Twitch, etc.) are page URLs rather than
+            # direct .mp4 links. Prefer using yt-dlp when available for those hosts.
+            if ytdlp is not None:
+                # Common hosts that require extractor support
+                if any(d in url for d in ("kick.com", "kick.tv", "twitch.tv", "youtube.com", "youtu.be")):
+                    return self._download_with_ytdlp(url, cookiefile_path=cookiefile.name if cookiefile else None, extra_headers=headers)
+
+            # Fallback: attempt a direct HTTP download using requests
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
             temp_path = temp_file.name
-            
-            response = requests.get(url, stream=True)
+
+            req_headers = headers if headers else {}
+            # Provide a sensible UA header if none supplied
+            req_headers.setdefault('User-Agent', 'python-requests/2.x')
+
+            response = requests.get(url, stream=True, timeout=30, headers=req_headers)
             response.raise_for_status()
-            
+
             with open(temp_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-            
+
             return temp_path
         except Exception as e:
             raise Exception(f"Failed to download video from URL: {str(e)}")
+        finally:
+            # We don't remove the cookiefile here because yt-dlp may still be using it
+            # The caller or the OS temp cleanup should handle removal when safe.
+            pass
+
+    def _download_with_ytdlp(self, url: str, cookiefile_path: Optional[str] = None, extra_headers: Optional[dict] = None) -> str:
+        """Download a video page using yt-dlp and return local filepath.
+
+        This requires the `yt-dlp` Python package to be installed in the environment.
+        If not available this will raise an informative error.
+        """
+        if ytdlp is None:
+            raise Exception("yt-dlp is not installed in the environment. Install yt-dlp to download sites like kick.com.")
+
+        temp_dir = tempfile.mkdtemp(prefix="clipgen_ytdlp_")
+        # Output template: single file with a generated name
+        out_template = os.path.join(temp_dir, "%(id)s.%(ext)s")
+
+        ytdlp_opts = {
+            'outtmpl': out_template,
+            'format': 'bestvideo+bestaudio/best',
+            'noplaylist': True,
+            'quiet': True,
+            'no_warnings': True,
+            # Prefer ffmpeg postprocessing if needed (should be available in typical setups)
+            'merge_output_format': 'mp4'
+        }
+
+        # Some sites (including Kick) may reject non-browser User-Agents or require referer headers.
+        # Provide a common modern browser UA and referer to reduce chance of 403/blocked requests.
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://kick.com/'
+        }
+        if extra_headers:
+            headers.update(extra_headers)
+
+        ytdlp_opts.setdefault('http_headers', headers)
+
+        # If a cookiefile path is supplied, instruct yt-dlp to use it
+        if cookiefile_path:
+            ytdlp_opts['cookiefile'] = cookiefile_path
+
+        try:
+            with ytdlp.YoutubeDL(ytdlp_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+
+                # Determine downloaded filename from info
+                if 'requested_downloads' in info and info['requested_downloads']:
+                    # yt-dlp internals provide filename in requested_downloads
+                    filename = info['requested_downloads'][0].get('filepath')
+                else:
+                    # Fallback to expected name from outtmpl
+                    ext = info.get('ext', 'mp4')
+                    video_id = info.get('id') or str(uuid.uuid4())
+                    filename = os.path.join(temp_dir, f"{video_id}.{ext}")
+
+                if not os.path.exists(filename):
+                    # try to find any file in temp_dir
+                    files = [os.path.join(temp_dir, f) for f in os.listdir(temp_dir)]
+                    if files:
+                        filename = files[0]
+
+                return filename
+        except Exception as e:
+            # Cleanup temp dir on failure
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass
+            raise Exception(f"yt-dlp download failed: {str(e)}")
     
     def transcribe_video(self, video_path: str) -> Dict:
         """
@@ -92,15 +221,28 @@ class GeminiVideoProcessor:
         """
         try:
             model = self.load_whisper_model()
-            print(f"Transcribing video: {video_path}")
-            
-            # Get word-level timestamps for precise cutting
+            print(f"Transcribing video: {video_path} (engine={self.stt_engine})")
+
+            # faster-whisper API
+            if self.stt_engine == "faster-whisper" and FasterWhisperModel is not None:
+                segments = []
+                # faster-whisper returns an iterator of segments
+                for segment in model.transcribe(video_path, beam_size=5, word_timestamps=True):
+                    segments.append({
+                        "start": float(segment.start),
+                        "end": float(segment.end),
+                        "text": segment.text
+                    })
+                full_text = "\n".join([s["text"] for s in segments])
+                return {"text": full_text, "segments": segments}
+
+            # Default: openai-whisper python package
             result = model.transcribe(
                 video_path,
                 word_timestamps=True,
                 verbose=False
             )
-            
+
             return result
         except Exception as e:
             raise Exception(f"Transcription failed: {str(e)}")
@@ -274,6 +416,14 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
     ) -> str:
         """Generate a single clip with optional subtitles"""
         try:
+            # Import MoviePy lazily so the module can be imported even when
+            # moviepy isn't installed (helps running the API without video deps).
+            try:
+                from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+                from moviepy.video.fx.crop import crop
+            except Exception as e:
+                raise Exception("moviepy is required for clip generation. Install moviepy or run the server without calling video generation.")
+
             video = VideoFileClip(video_path)
             
             # Ensure end time doesn't exceed video duration
@@ -402,11 +552,79 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
                     progress_callback(message, 50)
             
             segments = self.analyze_with_gemini(
-                transcription_result, 
+                transcription_result,
                 num_clips,
                 progress_callback=analysis_progress,
                 use_streaming=True
             )
+
+            # Step 2b: Energy-based scoring (fast heuristic)
+            try:
+                energy_windows = ffmpeg_helpers.get_top_energy_windows(video_path, window_size_sec=1.0, top_k=max(20, num_clips * 4))
+            except Exception:
+                energy_windows = []
+
+            # Scene detection (camera cuts)
+            try:
+                scene_timestamps = scene_detection.detect_scenes(video_path, scene_threshold=0.35)
+            except Exception:
+                scene_timestamps = []
+
+            # Audio "hype" events: laughter, cheers, shouts
+            try:
+                audio_hype_events = emotion_detector.detect_audio_hype_events(video_path, window_size_sec=0.5, rms_multiplier=2.0)
+            except Exception:
+                audio_hype_events = []
+
+            # Attach energy score to each segment: average RMS of overlapping windows
+            for seg in segments:
+                overlaps = [w for w in energy_windows if w['start'] < seg['end'] and w['end'] > seg['start']]
+                if overlaps:
+                    seg['energy_score'] = float(sum(w['rms'] for w in overlaps) / len(overlaps))
+                else:
+                    seg['energy_score'] = 0.0
+
+                # Hype score from audio events: proportion of overlapping hype events
+                hype_overlaps = [e for e in audio_hype_events if e['start'] < seg['end'] and e['end'] > seg['start']]
+                if hype_overlaps:
+                    seg['hype_score'] = float(sum(e.get('score', 0.0) for e in hype_overlaps) / len(hype_overlaps))
+                else:
+                    seg['hype_score'] = 0.0
+
+                # Scene proximity: reward segments near a camera cut (within 2s)
+                proximity = 0.0
+                for st in scene_timestamps:
+                    if st >= seg['start'] - 2.0 and st <= seg['end'] + 2.0:
+                        proximity = 1.0
+                        break
+                seg['scene_proximity'] = proximity
+
+            # Normalize energy_score to 0-1
+            energy_values = [s['energy_score'] for s in segments]
+            if energy_values and max(energy_values) > 0:
+                max_e = max(energy_values)
+                min_e = min(energy_values)
+                for s in segments:
+                    if max_e - min_e > 0:
+                        s['energy_norm'] = (s['energy_score'] - min_e) / (max_e - min_e)
+                    else:
+                        s['energy_norm'] = 0.0
+            else:
+                for s in segments:
+                    s['energy_norm'] = 0.0
+
+            # Re-rank segments by combined score = virality_score * (1 + energy_norm)
+            for s in segments:
+                try:
+                    vir = float(s.get('virality_score', 7))
+                except Exception:
+                    vir = 7.0
+                # Combine energy, hype and scene proximity to boost exciting moments
+                hype = float(s.get('hype_score', 0.0))
+                scene_boost = float(s.get('scene_proximity', 0.0))
+                s['combined_score'] = vir * (1.0 + float(s.get('energy_norm', 0.0)) + 0.5 * hype + 0.3 * scene_boost)
+
+            segments = sorted(segments, key=lambda x: x.get('combined_score', 0), reverse=True)[:num_clips]
             
             if progress_callback:
                 progress_callback("AI analysis complete", 60)
@@ -417,29 +635,51 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
                 progress_callback("Generating clips...", 65)
             
             generated_clips = []
-            
+
+            # create SRT/VTT for full transcription
+            try:
+                srt_path = tempfile.mktemp(suffix=".srt")
+                vtt_path = tempfile.mktemp(suffix=".vtt")
+                subtitles.create_srt_from_transcription(transcription_result, srt_path)
+                subtitles.create_vtt_from_srt(srt_path, vtt_path)
+            except Exception:
+                srt_path = None
+                vtt_path = None
+
             for i, segment in enumerate(segments):
                 output_path = tempfile.mktemp(suffix=f"_clip_{i+1}.mp4")
-                
+                preview_path = tempfile.mktemp(suffix=f"_preview_{i+1}.mp4")
+
                 # Update progress
                 clip_progress = 65 + int((i / len(segments)) * 30)
                 if progress_callback:
                     progress_callback(f"Generating clip {i+1}/{len(segments)}...", clip_progress)
-                
+
                 # Adjust end time based on desired clip duration
-                start = segment["start"]
-                end = min(segment["end"], start + clip_duration)
-                
-                clip_path = self.generate_clip(
-                    video_path=video_path,
-                    start_time=start,
-                    end_time=end,
-                    text=segment["hook"],  # Use hook for caption
-                    output_path=output_path,
-                    resolution=target_resolution,
-                    add_subtitles=True
-                )
-                
+                start = float(segment["start"])
+                end = min(float(segment["end"]), start + clip_duration)
+
+                # Fast preview: try lossless copy clip (very fast)
+                try:
+                    ffmpeg_helpers.fast_clip_copy(video_path, start, end - start, preview_path)
+                except Exception:
+                    preview_path = None
+
+                # Produce final clip. If subtitles/burn-in requested, we re-encode using MoviePy
+                try:
+                    clip_path = self.generate_clip(
+                        video_path=video_path,
+                        start_time=start,
+                        end_time=end,
+                        text=segment.get("hook", ""),  # Use hook for caption
+                        output_path=output_path,
+                        resolution=target_resolution,
+                        add_subtitles=True
+                    )
+                except Exception:
+                    # Fallback to preview if generate_clip fails
+                    clip_path = preview_path
+
                 generated_clips.append({
                     "clip_number": i + 1,
                     "path": clip_path,
@@ -450,6 +690,8 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
                     "reason": segment["reason"],
                     "category": segment["category"],
                     "virality_score": segment["virality_score"],
+                    "energy_score": segment.get("energy_score", 0.0),
+                    "energy_norm": segment.get("energy_norm", 0.0),
                     "duration": end - start
                 })
             
@@ -461,7 +703,9 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
                 "transcription": transcription_result["text"],
                 "segments": segments,
                 "clips": generated_clips,
-                "total_clips": len(generated_clips)
+                "total_clips": len(generated_clips),
+                "srt_path": srt_path,
+                "vtt_path": vtt_path
             }
             
         except Exception as e:

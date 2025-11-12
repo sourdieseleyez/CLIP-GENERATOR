@@ -4,7 +4,7 @@
   "description": "Clip Generator - Video Processing Application",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && python main.py",
+  "dev:backend": "cd backend && \"C:\\Users\\take2\\New folder\\.venv\\Scripts\\python.exe\" main.py",
     "dev:frontend": "cd frontend && npm run dev",
     "install:all": "cd frontend && npm install && cd ../backend && pip install -r requirements.txt"
   },

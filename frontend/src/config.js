@@ -30,4 +30,7 @@ export const UI_CONFIG = {
   transitionDuration: 300, // ms
 };
 
-export default { API_URL, UI_CONFIG };
+// Allow disabling auth in the frontend for local dev: set VITE_DISABLE_AUTH=true
+export const DISABLE_AUTH = (import.meta.env.VITE_DISABLE_AUTH || 'false') === 'true';
+
+export default { API_URL, UI_CONFIG, DISABLE_AUTH };

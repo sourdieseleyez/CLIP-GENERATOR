@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Upload, 
   Link, 
@@ -14,7 +14,7 @@ import {
   Settings
 } from 'lucide-react';
 import './App.css';
-import { API_URL, UI_CONFIG } from './config';
+import { API_URL, UI_CONFIG, DISABLE_AUTH } from './config';
 import CustomSelect from './CustomSelect';
 
 function App() {
@@ -41,6 +41,16 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [processingStatus, setProcessingStatus] = useState(null);
   const [clips, setClips] = useState([]);
+  const [captions, setCaptions] = useState({ srt: null, vtt: null });
+
+  // Auto-login when frontend DISABLE_AUTH is enabled (local dev)
+  useEffect(() => {
+    if (DISABLE_AUTH) {
+      // set a dummy token and user email; backend should accept any token when DISABLE_AUTH is enabled
+      setToken('dev-token');
+      setUserEmail('dev@localhost');
+    }
+  }, []);
 
   // Check if form is ready to submit
   const isFormReady = () => {
@@ -77,13 +87,15 @@ function App() {
           setAuthStatus({ type: 'error', message: data.detail || 'Registration failed' });
         }
       } else {
-        const formData = new FormData();
-        formData.append('username', email);
-        formData.append('password', password);
+        // OAuth2 expects application/x-www-form-urlencoded
+        const params = new URLSearchParams();
+        params.append('username', email);
+        params.append('password', password);
 
         const response = await fetch(`${API_URL}/token`, {
           method: 'POST',
-          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
         });
 
         const data = await response.json();
@@ -221,9 +233,15 @@ function App() {
               end: clip.end_time,
               text: clip.text,
               reason: clip.reason,
-              path: clip.path
+              path: clip.path,
+              url: clip.url || null
             }));
             setClips(generatedClips);
+            // Captions: prefer presigned URLs returned by backend (srt_url / vtt_url)
+            setCaptions({
+              srt: statusData.result.srt_url || null,
+              vtt: statusData.result.vtt_url || null
+            });
             setProcessingStatus({ type: 'success', message: `Generated ${generatedClips.length} clips successfully!` });
             setLoading(false);
           } else if (statusData.status === 'failed') {
@@ -291,7 +309,7 @@ function App() {
             <span>Dashboard</span>
           </button>
           
-          {!token ? (
+          {!token && !DISABLE_AUTH ? (
             <>
               <button className="nav-item" onClick={() => openAuthModal('login')}>
                 <User size={18} />
@@ -366,6 +384,7 @@ function App() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
+                  maxLength={64}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
@@ -539,7 +558,12 @@ function App() {
               {clips.map((clip) => (
                 <div key={clip.id} className="clip-card">
                   <div className="clip-preview">
-                    <Play size={32} />
+                        {/* Try to show preview video if available (prefers served URL or backend download endpoint) */}
+                        {clip.url ? (
+                          <video src={clip.url} controls width={240} />
+                        ) : (
+                          <video src={`${API_URL}/clips/${clip.id}/download`} controls width={240} />
+                        )}
                   </div>
                   <div className="clip-info">
                     Clip #{clip.id} • {clip.start}s - {clip.end}s
@@ -551,6 +575,17 @@ function App() {
                     <Download size={14} />
                     Download Clip
                   </button>
+                  <div style={{marginTop: 8}}>
+                    {captions.vtt && (
+                      <a href={captions.vtt} target="_blank" rel="noreferrer">Download captions (VTT)</a>
+                    )}
+                    {!captions.vtt && captions.srt && (
+                      <a href={captions.srt} target="_blank" rel="noreferrer">Download captions (SRT)</a>
+                    )}
+                    {!captions.srt && !captions.vtt && (
+                      <small style={{display: 'block', marginTop: 6}}>No captions available for this job.</small>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
