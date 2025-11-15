@@ -22,6 +22,14 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+# Import marketplace router
+try:
+    from marketplace import router as marketplace_router
+    MARKETPLACE_AVAILABLE = True
+except ImportError:
+    MARKETPLACE_AVAILABLE = False
+    logger.warning("Marketplace module not available")
+
 load_dotenv()
 
 # Configure logging
@@ -36,13 +44,18 @@ limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="Clip Generator API",
-    description="AI-powered video clip generation API",
-    version="1.0.0"
+    description="AI-powered video clip generation API with marketplace",
+    version="2.0.0"
 )
 
 # Add rate limiter
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Include marketplace router
+if MARKETPLACE_AVAILABLE:
+    app.include_router(marketplace_router)
+    logger.info("✓ Marketplace endpoints enabled")
 
 # CORS configuration
 # CORS configuration

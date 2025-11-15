@@ -1,0 +1,23 @@
+# Database dependencies (PostgreSQL)
+# Install these when you're ready to use a database
+
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# Installation instructions:
+# pip install -r requirements-database.txt
+
+# Note: On Windows, psycopg2-binary might fail to install
+# If it fails, try one of these alternatives:
+#
+# Option 1: Use pre-built wheel
+# Download from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#psycopg
+# Then: pip install psycopg2_binary-2.9.9-cp313-cp313-win_amd64.whl
+#
+# Option 2: Use psycopg (newer version, pure Python)
+# pip install psycopg[binary]
+# pip install sqlalchemy==2.0.23
+#
+# Option 3: Skip database for now
+# The app works without a database using in-memory storage
+# (Not recommended for production, but fine for testing)

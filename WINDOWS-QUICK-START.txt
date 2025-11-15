@@ -1,0 +1,159 @@
+╔══════════════════════════════════════════════════════════════╗
+║        CLIP GENERATOR - WINDOWS QUICK START                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+📁 YOU ARE HERE: C:\Users\dopeb\clip-gen\CLIP-GENERATOR
+
+
+🎯 STEP 1: START THE SERVERS
+────────────────────────────────────────────────────────────────
+
+Find this file in Windows Explorer:
+  📄 start-dev.bat
+
+Double-click it!
+
+Two windows will open:
+  🟢 Backend Server (black window)
+  🟢 Frontend Server (black window)
+
+Wait 10-15 seconds for both to start...
+
+
+🌐 STEP 2: OPEN YOUR BROWSER
+────────────────────────────────────────────────────────────────
+
+Open: http://localhost:5173
+
+You should see:
+  • Purple "Development Mode" banner at top
+  • Sidebar on the left
+  • Main content area
+
+
+🔐 STEP 3: DEV LOGIN
+────────────────────────────────────────────────────────────────
+
+Look in the sidebar for:
+  🟣 "Dev Login" button (purple/blue color)
+
+Click it!
+
+You'll see:
+  ✓ "Dev mode activated!" message
+  ✓ Sidebar changes to show Dashboard, Clips Library, etc.
+  ✓ Your email shows as "dev@clipgen.local"
+
+
+📊 STEP 4: CREATE SAMPLE DATA
+────────────────────────────────────────────────────────────────
+
+Look in the sidebar for:
+  🟣 "Seed Sample Data" button (purple/blue color)
+
+Click it!
+
+You'll see:
+  ✓ Alert: "Created 10 sample clips!"
+  ✓ Dashboard loads with data
+
+
+🎨 STEP 5: EXPLORE!
+────────────────────────────────────────────────────────────────
+
+Click these in the sidebar:
+
+📊 Dashboard
+  → See total clips, views, revenue
+  → Platform breakdown
+  → Top performing clips
+
+📚 Clips Library
+  → Browse all 10 sample clips
+  → Search, filter, sort
+  → Click edit icon to update analytics
+  → Download clips
+
+✨ Generate Clips
+  → Upload video or paste YouTube URL
+  → AI generates clips automatically
+
+
+💡 WHAT YOU'LL SEE
+────────────────────────────────────────────────────────────────
+
+Sample clips include:
+  • "This is the craziest thing..." - 125K views, $3.75
+  • "Here's why everyone is talking..." - 85K views, $6.80
+  • "Wait for it... 😂" - 67K views, $1.34
+  • ...and 7 more!
+
+Platforms: TikTok, YouTube, Instagram
+Categories: Humor, Educational, Controversial, Emotional
+
+
+🛑 STOP THE SERVERS
+────────────────────────────────────────────────────────────────
+
+Close the two black windows (Backend & Frontend)
+Or press Ctrl+C in each window
+
+
+❌ TROUBLESHOOTING
+────────────────────────────────────────────────────────────────
+
+"start-dev.bat doesn't work"
+  → Try manually:
+    1. Open PowerShell in CLIP-GENERATOR folder
+    2. Run: .\start-backend.bat
+    3. Open another PowerShell
+    4. Run: .\start-frontend.bat
+
+"Backend won't start"
+  → Check if Python is installed: python --version
+  → Install dependencies:
+    cd backend
+    pip install -r requirements.txt
+
+"Frontend won't start"
+  → Check if Node is installed: node --version
+  → Install dependencies:
+    cd frontend
+    npm install
+
+"Dev Login button not showing"
+  → Make sure frontend is running (check the window)
+  → Refresh browser (F5)
+  → Check URL is http://localhost:5173
+
+"Seed Data fails"
+  → You need a database configured
+  → See SETUP.md for database setup
+  → Or just test without seeding (generate real clips)
+
+"Port already in use"
+  → Close any other apps using ports 8000 or 5173
+  → Or restart your computer
+
+
+📚 MORE HELP
+────────────────────────────────────────────────────────────────
+
+Read these files:
+  📄 START-HERE.md - Overview
+  📄 DEV-MODE.md - Dev mode details
+  📄 SETUP.md - Full setup guide
+
+
+🎉 THAT'S IT!
+────────────────────────────────────────────────────────────────
+
+You now have:
+  ✓ Working clip generator
+  ✓ Analytics dashboard
+  ✓ Clips library
+  ✓ Sample data to explore
+
+Next: Generate real clips with your own videos!
+
+╚══════════════════════════════════════════════════════════════╝

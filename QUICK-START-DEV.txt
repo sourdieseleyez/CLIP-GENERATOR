@@ -1,0 +1,127 @@
+╔══════════════════════════════════════════════════════════════╗
+║           CLIP GENERATOR - DEV MODE QUICK START              ║
+╚══════════════════════════════════════════════════════════════╝
+
+🚀 START THE APP
+────────────────────────────────────────────────────────────────
+
+OPTION 1 - Easy Way (Windows):
+  Double-click: start-dev.bat
+  (Opens both servers in separate windows)
+
+OPTION 2 - Manual Way:
+  Terminal 1: start-backend.bat
+  Terminal 2: start-frontend.bat
+
+OPTION 3 - PowerShell:
+  Terminal 1:
+    cd backend
+    python main.py
+  
+  Terminal 2:
+    cd frontend
+    npm run dev
+
+Open: http://localhost:5173
+
+
+🎯 INSTANT LOGIN & TEST DATA
+────────────────────────────────────────────────────────────────
+
+1. Click "Dev Login" button (purple, in sidebar)
+   → Instantly logged in as dev@clipgen.local
+
+2. Click "Seed Sample Data" button (purple, in sidebar)
+   → Creates 10 realistic sample clips with analytics
+
+3. Explore:
+   → Dashboard: See analytics overview
+   → Clips Library: Browse/search/filter clips
+   → Generate Clips: Test clip generation
+
+
+📊 SAMPLE DATA INCLUDES
+────────────────────────────────────────────────────────────────
+
+• 10 clips with realistic data
+• Views: 28K - 156K
+• Revenue: $0.76 - $12.48
+• Platforms: TikTok, YouTube, Instagram
+• Categories: Humor, Educational, Controversial, Emotional, Surprising
+
+
+🔧 DEV MODE FEATURES
+────────────────────────────────────────────────────────────────
+
+✓ One-click dev login (no registration needed)
+✓ Sample data generator
+✓ No rate limits
+✓ Visual dev mode indicator (purple banner)
+✓ Auto-enabled in development
+
+
+🎨 WHAT TO TEST
+────────────────────────────────────────────────────────────────
+
+Dashboard:
+  • Summary stats cards
+  • Platform breakdown
+  • Top performing clips
+  • Category analytics
+
+Clips Library:
+  • Search clips by text
+  • Filter by platform/category
+  • Sort by views/revenue/virality
+  • Edit clip analytics
+  • Download clips
+
+Generate Clips:
+  • Upload video
+  • YouTube URL
+  • Process and generate
+
+
+⚠️  PRODUCTION DEPLOYMENT
+────────────────────────────────────────────────────────────────
+
+Before deploying, set in backend/.env:
+  ENVIRONMENT=production
+
+Dev mode automatically disabled in production builds!
+
+
+📝 NOTES
+────────────────────────────────────────────────────────────────
+
+• Dev login: dev@clipgen.local
+• Dev buttons are purple/blue colored
+• Sample data requires database (PostgreSQL)
+• Can seed data multiple times for more clips
+• All dev features only work in development mode
+
+
+🐛 TROUBLESHOOTING
+────────────────────────────────────────────────────────────────
+
+Dev login failed:
+  → Check backend is running
+  → Verify ENVIRONMENT=development in .env
+
+Seed data failed:
+  → Database must be configured
+  → Make sure you're logged in first
+
+Dev buttons not showing:
+  → Must run with npm run dev (not build)
+  → Check browser console for errors
+
+
+📚 MORE INFO
+────────────────────────────────────────────────────────────────
+
+See DEV-MODE.md for detailed documentation
+See FEATURES-SUMMARY.md for feature overview
+See ANALYTICS-UPDATE.md for analytics details
+
+╚══════════════════════════════════════════════════════════════╝

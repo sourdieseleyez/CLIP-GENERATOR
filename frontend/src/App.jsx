@@ -13,13 +13,15 @@ import {
   Home,
   Settings,
   BarChart3,
-  Library
+  Library,
+  Briefcase
 } from 'lucide-react';
 import './App.css';
 import { API_URL, UI_CONFIG, DISABLE_AUTH } from './config';
 import CustomSelect from './CustomSelect';
 import Dashboard from './Dashboard';
 import ClipsLibrary from './ClipsLibrary';
+import Marketplace from './Marketplace';
 
 function App() {
   // Check if we're in development mode
@@ -386,6 +388,14 @@ function App() {
               </button>
               
               <button 
+                className={`nav-item ${currentPage === 'marketplace' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('marketplace')}
+              >
+                <Briefcase size={18} />
+                <span>Marketplace</span>
+              </button>
+              
+              <button 
                 className={`nav-item ${currentPage === 'library' ? 'active' : ''}`}
                 onClick={() => setCurrentPage('library')}
               >
@@ -526,6 +536,10 @@ function App() {
         {/* Render different pages based on currentPage */}
         {currentPage === 'dashboard' && token && (
           <Dashboard token={token} />
+        )}
+        
+        {currentPage === 'marketplace' && token && (
+          <Marketplace token={token} />
         )}
         
         {currentPage === 'library' && token && (
