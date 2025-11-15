@@ -169,7 +169,7 @@ if SQLALCHEMY_AVAILABLE:
         __tablename__ = "campaigns"
         
         id = Column(Integer, primary_key=True, index=True)
-        client_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+        client_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
         
         # Campaign details
         title = Column(String, nullable=False)
@@ -216,9 +216,9 @@ if SQLALCHEMY_AVAILABLE:
         __tablename__ = "marketplace_jobs"
         
         id = Column(Integer, primary_key=True, index=True)
-        campaign_id = Column(Integer, ForeignKey('campaigns.id'), nullable=False)
-        clipper_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-        clip_id = Column(Integer, ForeignKey('clips.id'), nullable=True)
+        campaign_id = Column(Integer, ForeignKey('campaigns.id'), nullable=False, index=True)
+        clipper_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+        clip_id = Column(Integer, ForeignKey('clips.id'), nullable=True, index=True)
         
         # Status
         status = Column(Enum(MarketplaceJobStatus), default=MarketplaceJobStatus.CLAIMED)
@@ -228,14 +228,18 @@ if SQLALCHEMY_AVAILABLE:
         clipper_share = Column(Float, nullable=False)  # After platform fee
         platform_fee = Column(Float, nullable=False)
         
+        # Performance bonuses (based on views)
+        bonus_earned = Column(Float, default=0.0)
+        total_views = Column(Integer, default=0)
+        
         # Review
         client_feedback = Column(Text, nullable=True)
         client_rating = Column(Integer, nullable=True)  # 1-5 stars
         
         # YouTube tracking
-        youtube_video_id = Column(String, nullable=True)
+        youtube_video_id = Column(String, nullable=True, index=True)
         youtube_url = Column(String, nullable=True)
-        tracking_code = Column(String, unique=True, nullable=True)
+        tracking_code = Column(String, unique=True, nullable=True, index=True)
         
         # Dates
         claimed_at = Column(DateTime, default=datetime.utcnow)

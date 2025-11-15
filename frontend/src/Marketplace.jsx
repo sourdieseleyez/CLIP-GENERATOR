@@ -3,16 +3,18 @@ import { Briefcase, DollarSign, Clock, TrendingUp, CheckCircle, XCircle } from '
 import { API_URL } from './config';
 import './Marketplace.css';
 
-function Marketplace({ token, userRole = 'clipper' }) {
+function Marketplace({ token, userRole = 'clipper', onStartJob }) {
   const [campaigns, setCampaigns] = useState([]);
   const [myJobs, setMyJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [campaignsMap, setCampaignsMap] = useState({});
 
   useEffect(() => {
     if (userRole === 'clipper') {
-      loadCampaigns();
-      loadMyJobs();
+      setLoading(true);
+      Promise.all([loadCampaigns(), loadMyJobs()])
+        .finally(() => setLoading(false));
     }
   }, [userRole]);
 
@@ -24,6 +26,10 @@ function Marketplace({ token, userRole = 'clipper' }) {
       if (response.ok) {
         const data = await response.json();
         setCampaigns(data);
+        // Create map for quick lookup
+        const map = {};
+        data.forEach(c => map[c.id] = c);
+        setCampaignsMap(map);
       }
     } catch (error) {
       console.error('Failed to load campaigns:', error);
@@ -57,9 +63,17 @@ function Marketplace({ token, userRole = 'clipper' }) {
       });
 
       if (response.ok) {
-        alert('Campaign claimed! Start creating clips.');
-        loadCampaigns();
-        loadMyJobs();
+        const jobData = await response.json();
+        const campaign = campaigns.find(c => c.id === campaignId);
+        
+        if (onStartJob && campaign) {
+          // Immediately start working on the job
+          onStartJob(jobData, campaign);
+        } else {
+          alert('Campaign claimed! Start creating clips.');
+          loadCampaigns();
+          loadMyJobs();
+        }
       } else {
         const error = await response.json();
         alert(error.detail || 'Failed to claim campaign');
@@ -100,11 +114,19 @@ function Marketplace({ token, userRole = 'clipper' }) {
   return (
     <div className="marketplace-container">
       <div className="marketplace-header">
-        <h1>
-          <Briefcase size={24} />
-          Marketplace
-        </h1>
-        <p>Find campaigns, create clips, earn money</p>
+        <div>
+          <h1>
+            <Briefcase size={24} />
+            Marketplace
+          </h1>
+          <p>Find campaigns, create clips, earn money</p>
+        </div>
+        {userRole === 'client' && (
+          <button className="create-campaign-btn" onClick={() => window.location.hash = 'create-campaign'}>
+            <Briefcase size={16} />
+            Post Campaign
+          </button>
+        )}
       </div>
 
       {/* My Active Jobs */}
@@ -134,7 +156,12 @@ function Marketplace({ token, userRole = 'clipper' }) {
       {/* Available Campaigns */}
       <section className="campaigns-section">
         <h2>Available Campaigns</h2>
-        {campaigns.length === 0 ? (
+        {loading ? (
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Loading campaigns...</p>
+          </div>
+        ) : campaigns.length === 0 ? (
           <div className="empty-state">
             <Briefcase size={48} />
             <p>No campaigns available right now</p>

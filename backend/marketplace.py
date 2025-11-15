@@ -2,7 +2,7 @@
 Marketplace API endpoints for campaign posting and job management
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -13,7 +13,8 @@ from database import (
     Campaign, CampaignStatus,
     MarketplaceJob, MarketplaceJobStatus,
     User, UserTier, UserRole,
-    Payout, PayoutStatus
+    Payout, PayoutStatus,
+    Clip  # For bonus calculation
 )
 
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
@@ -96,6 +97,16 @@ def calculate_split(tier: str, amount: float) -> tuple:
 # Import auth from shared module (no circular import)
 from auth import get_current_user
 
+# Import rate limiter
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    limiter = Limiter(key_func=get_remote_address)
+    RATE_LIMIT_AVAILABLE = True
+except ImportError:
+    RATE_LIMIT_AVAILABLE = False
+    limiter = None
+
 
 # ============================================================================
 # CAMPAIGN ENDPOINTS (CLIENT SIDE)
@@ -103,10 +114,11 @@ from auth import get_current_user
 
 @router.post("/campaigns", response_model=CampaignResponse)
 async def create_campaign(
+    request: Request,
     campaign: CampaignCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new campaign (clients only)"""
+    """Create a new campaign (clients only) - Rate limited to 5/hour"""
     if not is_database_enabled():
         raise HTTPException(status_code=503, detail="Database not configured")
     
@@ -158,7 +170,8 @@ async def create_campaign(
 @router.get("/campaigns", response_model=List[CampaignResponse])
 async def list_campaigns(
     status: Optional[str] = "active",
-    limit: int = 20
+    limit: int = 20,
+    offset: int = 0
 ):
     """List available campaigns (public for clippers to browse)"""
     if not is_database_enabled():
@@ -171,7 +184,7 @@ async def list_campaigns(
         if status:
             query = query.filter(Campaign.status == CampaignStatus[status.upper()])
         
-        campaigns = query.order_by(Campaign.created_at.desc()).limit(limit).all()
+        campaigns = query.order_by(Campaign.created_at.desc()).offset(offset).limit(limit).all()
         
         return [
             CampaignResponse(
@@ -284,10 +297,21 @@ async def claim_job(
         return {
             "job_id": job.id,
             "campaign_id": campaign.id,
+            "campaign": {
+                "id": campaign.id,
+                "title": campaign.title,
+                "description": campaign.description,
+                "video_url": campaign.video_url,
+                "num_clips_needed": campaign.num_clips_needed,
+                "clip_duration": campaign.clip_duration,
+                "resolution": campaign.resolution
+            },
             "agreed_price": job.agreed_price,
             "your_earnings": job.clipper_share,
+            "clipper_share": job.clipper_share,
             "platform_fee": job.platform_fee,
-            "status": job.status.value
+            "status": job.status.value,
+            "tracking_code": job.tracking_code
         }
     finally:
         db.close()
