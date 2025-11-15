@@ -1,65 +1,14 @@
-# 🎬 Clip Generator
+# ClipGen - AI-Powered Viral Clip Marketplace
 
-AI-powered video clip generation using **Gemini 2.5 Flash Lite** and **OpenAI Whisper**.
+**Turn any video into viral clips. Get paid.**
 
-Transform long videos into viral short-form clips automatically. Perfect for TikTok, Instagram Reels, and YouTube Shorts.
-
----
-
-## ✨ Features
-
-- 🤖 **AI-Powered Analysis** - Gemini 2.5 Flash Lite finds viral moments (133x cheaper than GPT-4!)
-- 🎙️ **Accurate Transcription** - OpenAI Whisper with word-level timestamps
-- 📱 **Multi-Format Support** - Portrait (9:16), Landscape (16:9), Square (1:1)
-- ☁️ **Cloud Storage** - Cloudflare R2 / AWS S3 integration
-- 💾 **PostgreSQL Database** - Neon / Railway / Supabase support
-- 🎨 **Beautiful UI** - Modern React interface with dark theme
-- 🚀 **Production Ready** - Deploy to Railway + Vercel in minutes
+ClipGen is a two-sided marketplace where content creators and brands post campaigns, and skilled clippers use AI to generate viral short-form content. Clippers earn money based on performance with tiered revenue splits (70/30 to 85/15).
 
 ---
 
-## 🚀 Quick Start
+## 🎯 Mission
 
-### 1. Clone Repository
-```bash
-git clone <your-repo>
-cd CLIP-GENERATOR
-```
-
-### 2. Setup Backend
-```bash
-setup-backend.bat
-```
-
-### 3. Configure API Key
-Edit `backend/.env`:
-```env
-SECRET_KEY=your-secret-key
-GEMINI_API_KEY=your-gemini-key
-```
-
-Get Gemini API key: https://aistudio.google.com/app/apikey
-
-### 4. Setup Frontend
-```bash
-cd frontend
-npm install
-```
-
-### 5. Start Application
-```bash
-QUICK-START.bat
-```
-
-Visit: http://localhost:5173
-
----
-
-## 📖 Documentation
-
-- **[SETUP-SUMMARY.md](SETUP-SUMMARY.md)** - Quick overview of what's included
-- **[PRODUCTION-SETUP.md](PRODUCTION-SETUP.md)** - Complete production deployment guide
-- **[GET-STARTED.md](GET-STARTED.md)** - Detailed getting started guide
+Democratize viral content creation by combining AI automation with human creativity. Enable anyone to earn money creating clips while helping creators and brands maximize their reach on TikTok, YouTube Shorts, and Instagram Reels.
 
 ---
 
@@ -67,327 +16,326 @@ Visit: http://localhost:5173
 
 ### Tech Stack
 
-**Frontend:**
-- React 19
-- Vite
-- Lucide Icons
-- Custom CSS
+**Backend (Python)**
+- FastAPI - High-performance async API
+- PostgreSQL - Primary database (SQLAlchemy ORM)
+- Redis + RQ - Job queue for video processing
+- Gemini 2.5 Flash Lite - AI clip analysis (133x cheaper than GPT-4)
+- Whisper - Speech-to-text transcription
+- FFmpeg - Video processing and audio analysis
+- S3-compatible storage - Cloudflare R2, AWS S3, DigitalOcean Spaces
 
-**Backend:**
-- FastAPI (Python)
-- Gemini 2.5 Flash Lite (AI)
-- OpenAI Whisper (Transcription)
-- MoviePy (Video Processing)
-- SQLAlchemy (Database)
-- Boto3 (Cloud Storage)
+**Frontend (React)**
+- React 18 + Vite - Fast development and builds
+- Lucide Icons - Clean, modern iconography
+- CSS Variables - Themeable design system
 
-**Infrastructure:**
-- Database: Neon PostgreSQL
-- Storage: Cloudflare R2
-- Backend: Railway
-- Frontend: Vercel
+**Integrations**
+- YouTube Data API v3 - Auto-upload with tracking
+- Stripe Connect (planned) - Automated payments
 
-### How It Works
+### System Architecture
 
 ```
-1. User uploads video or provides YouTube URL
-2. Whisper transcribes audio with timestamps
-3. Gemini analyzes transcript for viral moments
-4. MoviePy generates clips at identified timestamps
-5. Clips uploaded to cloud storage
-6. User downloads clips
+┌─────────────────────────────────────────────────────────────┐
+│                         Frontend (React)                     │
+│  Dashboard | Marketplace | Clip Generator | Analytics       │
+└────────────────────────┬────────────────────────────────────┘
+                         │ REST API
+┌────────────────────────┴────────────────────────────────────┐
+│                      Backend (FastAPI)                       │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │   Auth   │  │Marketplace│  │ YouTube  │  │  Video   │   │
+│  │  Module  │  │    API    │  │   API    │  │Processor │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+   ┌────▼─────┐    ┌────▼─────┐    ┌────▼─────┐
+   │PostgreSQL│    │  Redis   │    │    S3    │
+   │ Database │    │  Queue   │    │ Storage  │
+   └──────────┘    └──────────┘    └──────────┘
+```
+
+### Data Flow
+
+**Self-Service Flow:**
+```
+User → Upload Video → AI Processing → Generate Clips → Download
+```
+
+**Marketplace Flow:**
+```
+Client → Create Campaign → Post to Marketplace
+                              ↓
+Clipper → Browse → Claim Job → Generate Clips
+                              ↓
+Clipper → Submit → Upload to YouTube (auto-tracked)
+                              ↓
+Client → Review → Approve/Reject
+                              ↓
+Clipper → Request Payout → Receive Payment
+                              ↓
+Daily Cron → Sync Views → Calculate Bonuses
 ```
 
 ---
 
-## 💰 Pricing
+## 💰 Revenue Model
 
-### Development (Free Tier)
-- Gemini: Free (15 req/min)
-- Neon: Free (0.5GB)
-- Cloudflare R2: Free (10GB)
-- Railway: $5 credit
-- Vercel: Free
-- **Total: $0/month**
+### Tiered Revenue Splits
 
-### Production (1000 videos/month)
-- Gemini: $60
-- Neon: Free
-- Cloudflare R2: $0.75
-- Railway: $15
-- Vercel: Free
-- **Total: ~$76/month**
+Clippers earn more as they prove their skills:
 
-**133x cheaper than using GPT-4!**
+| Tier | Split | Requirements |
+|------|-------|--------------|
+| 🥉 Bronze | 70/30 | New users (default) |
+| 🥈 Silver | 75/25 | 10+ approved clips OR 100k+ views |
+| 🥇 Gold | 80/20 | 50+ approved clips OR 500k+ views |
+| 💎 Platinum | 85/15 | 100+ approved clips OR 1M+ views |
+
+### Performance Bonuses
+
+Viral clips earn automatic bonuses:
+- 100k views = 20% bonus
+- 500k views = 50% bonus
+- 1M views = 100% bonus
+- 5M views = 200% bonus
+
+### Platform Revenue Streams
+
+1. **Revenue Share** - 15-30% per clip (based on clipper tier)
+2. **Marketplace Fee** - 5-10% on campaign budgets (future)
+3. **Client Subscriptions** - Tiered plans (future)
+4. **Premium AI Tools** - Advanced features for clippers (future)
 
 ---
 
-## 🔧 Configuration
+## 🚀 Quick Start
 
-### Required Environment Variables
+### Prerequisites
 
-```env
-# Required
-SECRET_KEY=your-secret-key
-GEMINI_API_KEY=your-gemini-key
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL (or use Neon.tech free tier)
+- FFmpeg installed
 
-# Optional (for production)
-DATABASE_URL=postgresql://...
-STORAGE_BUCKET=your-bucket
-STORAGE_ACCESS_KEY=your-key
-STORAGE_SECRET_KEY=your-secret
-STORAGE_ENDPOINT=https://...
-STORAGE_REGION=auto
-```
+### Backend Setup
 
-### Test Configuration
 ```bash
-test-gemini.bat              # Test Gemini API
-test-production-config.bat   # Test all configuration
-CHECK-CONFIG.bat             # Verify setup
+cd backend
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run server
+python main.py
 ```
 
----
+### Frontend Setup
 
-## 📦 What's Included
-
-### Scripts
-- `setup-backend.bat` - Install Python dependencies
-- `QUICK-START.bat` - Start both servers
-- `test-gemini.bat` - Test Gemini integration
-- `test-production-config.bat` - Verify production config
-- `CHECK-CONFIG.bat` - Check all configuration
-
-### Backend Files
-- `main.py` - FastAPI application
-- `gemini_processor.py` - Gemini 2.5 Flash Lite integration
-- `storage.py` - Cloud storage manager (R2/S3)
-- `database.py` - PostgreSQL models
-- `requirements.txt` - Python dependencies
-
-### Frontend Files
-- `src/App.jsx` - Main React component
-- `src/config.js` - API configuration
-- `src/CustomSelect.jsx` - Custom dropdown component
-
----
-
-## 🎯 Usage
-
-### 1. Register Account
-- Create account with email/password
-- Login to get JWT token
-
-### 2. Upload Video
-- **Upload File**: MP4, MOV, AVI, MKV (max 500MB)
-- **YouTube URL**: Any public YouTube video
-- **Direct URL**: Direct link to video file
-
-### 3. Configure Clips
-- **Number**: 3, 5, 8, or 10 clips
-- **Duration**: 15s, 30s, 45s, or 60s
-- **Format**: Portrait, Landscape, or Square
-
-### 4. Generate Clips
-- Click "Generate Clips"
-- Wait for processing (10-15 minutes for 10-min video)
-- Download individual clips
-
----
-
-## 🚀 Deployment
-
-### Deploy Backend (Railway)
-```bash
-# Push to GitHub
-git push
-
-# Deploy on Railway
-# 1. Connect GitHub repo
-# 2. Add environment variables
-# 3. Deploy automatically
-```
-
-### Deploy Frontend (Vercel)
 ```bash
 cd frontend
-vercel
+
+# Install dependencies
+npm install
+
+# Run dev server
+npm run dev
 ```
 
-See [PRODUCTION-SETUP.md](PRODUCTION-SETUP.md) for detailed instructions.
+### Environment Variables
+
+**Backend (.env):**
+```bash
+SECRET_KEY=<generate-with-secrets.token_urlsafe(32)>
+GEMINI_API_KEY=<from-google-ai-studio>
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+DISABLE_AUTH=false  # true for local dev only
+
+# Optional
+STORAGE_BUCKET=<s3-bucket-name>
+STORAGE_ACCESS_KEY=<aws-access-key>
+STORAGE_SECRET_KEY=<aws-secret-key>
+```
+
+**Frontend (.env):**
+```bash
+VITE_API_URL=http://localhost:8000
+```
 
 ---
 
-## 🔍 Features in Detail
+## 📁 Project Structure
 
-### AI-Powered Clip Selection
-- Analyzes transcript for emotional peaks
-- Identifies quotable moments
-- Finds story arcs and climaxes
-- Rates virality potential (1-10)
-- Suggests best platform (TikTok/Reels/Shorts)
-
-### Video Processing
-- Automatic transcription with Whisper
-- Word-level timestamp accuracy
-- Multi-language support
-- Automatic cropping and resizing
-- Optional subtitle overlay
-
-### Cloud Storage
-- Permanent clip storage
-- No temp file issues
-- Fast global delivery
-- Presigned download URLs
-- S3-compatible (R2, S3, Spaces)
-
-### Database
-- User authentication
-- Video metadata
-- Job tracking
-- Clip metadata
-- Progress updates
-
----
-
-## 🛠️ Development
-
-### Project Structure
 ```
 CLIP-GENERATOR/
 ├── backend/
-│   ├── main.py
-│   ├── gemini_processor.py
-│   ├── storage.py
-│   ├── database.py
-│   └── requirements.txt
+│   ├── main.py                 # FastAPI app, core routes
+│   ├── auth.py                 # Authentication module
+│   ├── database.py             # SQLAlchemy models
+│   ├── marketplace.py          # Marketplace API
+│   ├── youtube_integration.py  # YouTube upload & tracking
+│   ├── gemini_processor.py     # AI clip generation
+│   ├── storage.py              # S3 storage handler
+│   ├── ffmpeg_helpers.py       # Audio analysis
+│   ├── scene_detection.py      # Camera cut detection
+│   ├── emotion_detector.py     # Hype moment detection
+│   ├── subtitles.py            # SRT/VTT generation
+│   └── cron_sync_views.py      # Daily view sync job
+│
 ├── frontend/
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── config.js
-│   │   └── CustomSelect.jsx
-│   └── package.json
-└── docs/
-    ├── PRODUCTION-SETUP.md
-    ├── SETUP-SUMMARY.md
-    └── GET-STARTED.md
+│   └── src/
+│       ├── App.jsx             # Main app with routing
+│       ├── Dashboard.jsx       # Analytics dashboard
+│       ├── Marketplace.jsx     # Browse campaigns
+│       ├── CreateCampaign.jsx  # Campaign creation
+│       ├── SubmitJob.jsx       # Job submission
+│       └── ClipsLibrary.jsx    # Clip history
+│
+└── README.md
 ```
 
-### Run Tests
+---
+
+## 🔑 Key Features
+
+### For Clippers
+- ✅ AI-powered clip generation (Gemini + Whisper)
+- ✅ Browse available campaigns
+- ✅ Tiered earnings (70-85% revenue share)
+- ✅ Performance bonuses for viral clips
+- ✅ Auto-upload to YouTube with tracking
+- ✅ Portfolio and rating system
+
+### For Clients
+- ✅ Post campaigns with requirements
+- ✅ Review and approve submissions
+- ✅ Track performance analytics
+- ✅ Pay per clip or bulk pricing
+- ✅ Quality ratings and feedback
+
+### AI Processing
+- ✅ Automatic transcription (Whisper)
+- ✅ Viral moment detection (Gemini 2.5)
+- ✅ Audio energy analysis
+- ✅ Scene change detection
+- ✅ Emotion/hype detection
+- ✅ Auto-generated subtitles (SRT/VTT)
+
+---
+
+## 🧪 Testing
+
 ```bash
-# Backend
+# Backend tests (coming soon)
 cd backend
-venv\Scripts\activate
 pytest
 
-# Frontend
+# Frontend tests (coming soon)
 cd frontend
 npm test
 ```
 
-### Code Quality
-```bash
-# Python
-black backend/
-flake8 backend/
+---
 
-# JavaScript
-cd frontend
-npm run lint
+## 📊 Database Schema
+
+### Core Tables
+- `users` - User accounts with marketplace roles
+- `campaigns` - Client job postings
+- `marketplace_jobs` - Job assignments and tracking
+- `clips` - Generated clips with performance data
+- `payouts` - Payment tracking
+
+### Relationships
+```
+users (1) ──→ (N) campaigns (client posts jobs)
+users (1) ──→ (N) marketplace_jobs (clipper claims jobs)
+campaigns (1) ──→ (N) marketplace_jobs
+marketplace_jobs (1) ──→ (1) clips
+users (1) ──→ (N) payouts
 ```
 
 ---
 
-## 📊 Performance
+## 🔐 Security
 
-### Processing Time (10-minute video)
-- Transcription: ~10 minutes (1x realtime)
-- AI Analysis: ~3 seconds (Gemini is fast!)
-- Clip Generation: ~2 minutes (5 clips)
-- **Total: ~12-13 minutes**
-
-### Optimization Tips
-- Use `tiny` Whisper model for faster transcription
-- Generate fewer clips (3 instead of 5)
-- Use shorter clip duration (15s instead of 30s)
-- Enable GPU for Whisper (10x faster)
+- JWT token authentication
+- Bcrypt password hashing
+- Rate limiting on all endpoints
+- CORS configuration
+- Input validation with Pydantic
+- SQL injection protection (SQLAlchemy ORM)
 
 ---
 
-## 🐛 Troubleshooting
+## 🚢 Deployment
 
-### Backend won't start
-```bash
-cd backend
-venv\Scripts\activate
-pip install -r requirements.txt --force-reinstall
-```
+### Recommended Stack
+- **Backend:** Railway or Render
+- **Frontend:** Vercel or Netlify
+- **Database:** Neon.tech (PostgreSQL)
+- **Storage:** Cloudflare R2 or AWS S3
+- **Queue:** Upstash Redis
 
-### "Video processor not initialized"
-- Check `GEMINI_API_KEY` in `.env`
-- Verify key at https://aistudio.google.com/app/apikey
-- Restart backend server
-
-### Frontend can't connect
-- Verify backend running on port 8000
-- Check `frontend/src/config.js` API_URL
-- Check browser console for CORS errors
-
-### Database connection failed
-- Verify `DATABASE_URL` format
-- Check Neon project is active
-- Test with: `python -c "from database import init_database; init_database('your-url')"`
+### Deploy Checklist
+1. Set up PostgreSQL database
+2. Configure environment variables
+3. Deploy backend API
+4. Deploy frontend app
+5. Set up cron job for view sync
+6. Configure YouTube OAuth (optional)
 
 ---
 
-## 📝 License
+## 📈 Roadmap
 
-MIT License - See LICENSE file for details
+### MVP (Current)
+- [x] AI clip generation
+- [x] Marketplace system
+- [x] YouTube integration
+- [x] Tiered revenue splits
+- [x] Performance bonuses
+
+### v2.0
+- [ ] Stripe Connect payments
+- [ ] Email notifications
+- [ ] Advanced analytics
+- [ ] Multi-platform support (TikTok, Instagram)
+- [ ] Referral system
+
+### v3.0
+- [ ] White-label for agencies
+- [ ] Team accounts
+- [ ] API for integrations
+- [ ] Mobile apps
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+Contributions welcome! Please read our contributing guidelines first.
 
 ---
 
-## 📧 Support
+## 📄 License
 
-- **Issues**: GitHub Issues
-- **Docs**: See `/docs` folder
-- **Email**: your-email@example.com
+Proprietary - All rights reserved
 
 ---
 
-## 🎉 Acknowledgments
+## 🆘 Support
 
-- **Gemini 2.5 Flash Lite** - Google AI
-- **OpenAI Whisper** - OpenAI
-- **FastAPI** - Sebastián Ramírez
-- **React** - Meta
-- **MoviePy** - Zulko
+For issues or questions:
+- Create an issue on GitHub
+- Email: support@clipgen.ai (placeholder)
 
 ---
 
-## 🔗 Links
-
-- **Gemini API**: https://aistudio.google.com/app/apikey
-- **Neon Database**: https://neon.tech
-- **Cloudflare R2**: https://dash.cloudflare.com/r2
-- **Railway**: https://railway.app
-- **Vercel**: https://vercel.com
-
----
-
-**Ready to create viral clips? Get started now! 🚀**
-
-```bash
-setup-backend.bat
-# Add GEMINI_API_KEY to backend/.env
-QUICK-START.bat
-```
+**Built with ❤️ using AI and human creativity**

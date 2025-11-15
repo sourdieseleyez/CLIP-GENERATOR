@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status, BackgroundTasks, Request
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, validator
@@ -30,6 +30,14 @@ except ImportError:
     MARKETPLACE_AVAILABLE = False
     logger.warning("Marketplace module not available")
 
+# Import YouTube integration
+try:
+    from youtube_integration import router as youtube_router
+    YOUTUBE_AVAILABLE = True
+except ImportError:
+    YOUTUBE_AVAILABLE = False
+    logger.warning("YouTube integration not available")
+
 load_dotenv()
 
 # Configure logging
@@ -57,6 +65,11 @@ if MARKETPLACE_AVAILABLE:
     app.include_router(marketplace_router)
     logger.info("✓ Marketplace endpoints enabled")
 
+# Include YouTube router
+if YOUTUBE_AVAILABLE:
+    app.include_router(youtube_router)
+    logger.info("✓ YouTube integration enabled")
+
 # CORS configuration
 # CORS configuration
 # Allow localhost dev ports by default; can opt-in to allow all origins with CORS_ALLOW_ALL env var
@@ -80,9 +93,10 @@ else:
         allow_headers=["*"],
     )
 
+# Import auth utilities
+from auth import get_current_user, create_access_token, oauth2_scheme, SECRET_KEY, ALGORITHM
+
 # Security
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
-ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # Option to disable auth for local testing (set to 'true' in backend/.env)
 DISABLE_AUTH = os.getenv("DISABLE_AUTH", "true").lower() in ("1", "true", "yes")
@@ -259,47 +273,7 @@ def get_password_hash(password):
     pw = pw_bytes.decode('utf-8', errors='ignore')
     return pwd_context.hash(pw)
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    # If auth is disabled for local testing, return a dev user immediately
-    if DISABLE_AUTH:
-        return {"email": DEV_USER_EMAIL, "disabled": False}
-
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except jwt.PyJWTError:
-        raise credentials_exception
-    
-    if is_database_enabled():
-        # Use database
-        db = get_db()
-        try:
-            user = db.query(DBUser).filter(DBUser.email == email).first()
-            if user is None:
-                raise credentials_exception
-            return {"email": user.email, "hashed_password": user.hashed_password, "disabled": user.disabled}
-        finally:
-            db.close()
-    else:
-        # Fallback to in-memory
-        user = users_db.get(email)
-        if user is None:
-            raise credentials_exception
-        return user
+# Auth functions moved to auth.py module
 
 # Routes
 @app.get("/")
@@ -1539,3 +1513,52 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# ============================================================================
+# CLIP DOWNLOAD ENDPOINT
+# ============================================================================
+
+@app.get("/clips/{clip_id}/download")
+async def download_clip(
+    clip_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download a generated clip file"""
+    if not is_database_enabled():
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    db = get_db()
+    try:
+        # Get clip from database
+        clip = db.query(DBClip).filter(DBClip.id == clip_id).first()
+        if not clip:
+            raise HTTPException(status_code=404, detail="Clip not found")
+        
+        # Get file path (prefer local, fallback to storage)
+        file_path = clip.local_path
+        
+        if not file_path or not os.path.exists(file_path):
+            # Try storage key
+            if clip.storage_key:
+                storage = get_storage()
+                if storage and storage.enabled:
+                    # Generate presigned URL for cloud storage
+                    try:
+                        url = storage.generate_presigned_url(clip.storage_key, expiration=3600)
+                        from fastapi.responses import RedirectResponse
+                        return RedirectResponse(url=url)
+                    except Exception as e:
+                        logger.error(f"Failed to generate presigned URL: {e}")
+            
+            raise HTTPException(status_code=404, detail="Clip file not found")
+        
+        # Return local file
+        return FileResponse(
+            file_path,
+            media_type="video/mp4",
+            filename=f"clip_{clip_id}.mp4"
+        )
+        
+    finally:
+        db.close()

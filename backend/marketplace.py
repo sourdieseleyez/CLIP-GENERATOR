@@ -93,11 +93,8 @@ def calculate_split(tier: str, amount: float) -> tuple:
     return clipper_share, platform_fee
 
 
-def get_current_user_from_token(token: str):
-    """Extract user from token - placeholder for now"""
-    # This should integrate with your existing auth system
-    # For now, return a mock user
-    return {"email": "user@example.com", "id": 1}
+# Import auth from shared module (no circular import)
+from auth import get_current_user
 
 
 # ============================================================================
@@ -107,7 +104,7 @@ def get_current_user_from_token(token: str):
 @router.post("/campaigns", response_model=CampaignResponse)
 async def create_campaign(
     campaign: CampaignCreate,
-    current_user: dict = Depends(get_current_user_from_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """Create a new campaign (clients only)"""
     if not is_database_enabled():
@@ -238,7 +235,7 @@ async def get_campaign(campaign_id: int):
 @router.post("/jobs/claim")
 async def claim_job(
     request: JobClaimRequest,
-    current_user: dict = Depends(get_current_user_from_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """Claim a campaign job (clippers only)"""
     if not is_database_enabled():
@@ -299,7 +296,7 @@ async def claim_job(
 @router.post("/jobs/submit")
 async def submit_job(
     request: JobSubmitRequest,
-    current_user: dict = Depends(get_current_user_from_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """Submit completed clip for review"""
     if not is_database_enabled():
@@ -343,7 +340,7 @@ async def submit_job(
 
 @router.get("/jobs/my-jobs")
 async def get_my_jobs(
-    current_user: dict = Depends(get_current_user_from_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get clipper's jobs"""
     if not is_database_enabled():
@@ -379,7 +376,7 @@ async def get_my_jobs(
 @router.post("/jobs/review")
 async def review_job(
     request: JobReviewRequest,
-    current_user: dict = Depends(get_current_user_from_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """Review and approve/reject submitted clip"""
     if not is_database_enabled():
@@ -439,7 +436,7 @@ async def review_job(
 @router.post("/payouts/request")
 async def request_payout(
     request: PayoutRequest,
-    current_user: dict = Depends(get_current_user_from_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """Request payout for approved jobs"""
     if not is_database_enabled():
@@ -491,7 +488,7 @@ async def request_payout(
 
 @router.get("/payouts/my-payouts")
 async def get_my_payouts(
-    current_user: dict = Depends(get_current_user_from_token)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get clipper's payout history"""
     if not is_database_enabled():
@@ -513,5 +510,78 @@ async def get_my_payouts(
             }
             for p in payouts
         ]
+    finally:
+        db.close()
+
+
+@router.post("/calculate-bonuses")
+async def calculate_performance_bonuses():
+    """Calculate and distribute performance bonuses based on view milestones"""
+    if not is_database_enabled():
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    db = get_db()
+    try:
+        # Bonus tiers (views → bonus multiplier)
+        bonus_tiers = {
+            100000: 1.2,   # 100k views = 20% bonus
+            500000: 1.5,   # 500k views = 50% bonus
+            1000000: 2.0,  # 1M views = 100% bonus
+            5000000: 3.0   # 5M views = 200% bonus
+        }
+        
+        # Get all approved jobs with YouTube videos
+        jobs = db.query(MarketplaceJob).filter(
+            MarketplaceJob.status == MarketplaceJobStatus.APPROVED,
+            MarketplaceJob.youtube_video_id.isnot(None)
+        ).all()
+        
+        bonuses_paid = 0
+        total_bonus_amount = 0.0
+        
+        for job in jobs:
+            if not job.clip_id:
+                continue
+            
+            # Get clip views
+            clip = db.query(Clip).filter(Clip.id == job.clip_id).first()
+            if not clip or clip.views == 0:
+                continue
+            
+            # Calculate bonus based on highest tier reached
+            bonus_multiplier = 1.0
+            for threshold, multiplier in sorted(bonus_tiers.items()):
+                if clip.views >= threshold:
+                    bonus_multiplier = multiplier
+            
+            # Calculate bonus (only if multiplier > 1)
+            if bonus_multiplier > 1.0:
+                base_earnings = job.clipper_share
+                bonus_amount = base_earnings * (bonus_multiplier - 1.0)
+                
+                # Only pay if not already paid
+                if job.bonus_earned < bonus_amount:
+                    new_bonus = bonus_amount - job.bonus_earned
+                    job.bonus_earned = bonus_amount
+                    job.total_views = clip.views
+                    
+                    # Update clipper total earnings
+                    clipper = db.query(User).filter(User.id == job.clipper_id).first()
+                    if clipper:
+                        clipper.total_earnings += new_bonus
+                        clipper.total_views = (clipper.total_views or 0) + clip.views
+                    
+                    bonuses_paid += 1
+                    total_bonus_amount += new_bonus
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "bonuses_paid": bonuses_paid,
+            "total_amount": total_bonus_amount,
+            "message": f"Distributed ${total_bonus_amount:.2f} in bonuses to {bonuses_paid} clippers"
+        }
+        
     finally:
         db.close()
