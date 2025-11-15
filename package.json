@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "description": "Clip Generator - Video Processing Application",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-  "dev:backend": "cd backend && \"C:\\Users\\take2\\New folder\\.venv\\Scripts\\python.exe\" main.py",
+    "dev": "concurrently --kill-others-on-fail \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && python main.py",
     "dev:frontend": "cd frontend && npm run dev",
-    "install:all": "cd frontend && npm install && cd ../backend && pip install -r requirements.txt"
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:frontend": "cd frontend && npm install",
+    "start": "npm run dev"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -11,13 +11,23 @@ import {
   User,
   UserPlus,
   Home,
-  Settings
+  Settings,
+  BarChart3,
+  Library
 } from 'lucide-react';
 import './App.css';
 import { API_URL, UI_CONFIG, DISABLE_AUTH } from './config';
 import CustomSelect from './CustomSelect';
+import Dashboard from './Dashboard';
+import ClipsLibrary from './ClipsLibrary';
 
 function App() {
+  // Check if we're in development mode
+  const isDev = import.meta.env.DEV;
+  
+  // Navigation state
+  const [currentPage, setCurrentPage] = useState('generate');
+  
   // Auth state
   const [authMode, setAuthMode] = useState('login');
   const [email, setEmail] = useState('');
@@ -129,6 +139,59 @@ function App() {
     setUserEmail('');
     setClips([]);
     setAuthStatus(null);
+  };
+
+  const handleDevLogin = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/dev/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Dev login failed');
+      }
+
+      const data = await response.json();
+      setToken(data.access_token);
+      setUserEmail(data.email);
+      setAuthStatus({ type: 'success', message: 'Dev mode activated!' });
+      setCurrentPage('dashboard');
+    } catch (error) {
+      setAuthStatus({ type: 'error', message: 'Dev login failed. Make sure backend is running.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSeedData = async () => {
+    if (!token) {
+      alert('Please login first');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/dev/seed-data`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to seed data');
+      }
+
+      const data = await response.json();
+      alert(`✓ Created ${data.clips_created} sample clips! Check Dashboard and Clips Library.`);
+      setCurrentPage('dashboard');
+    } catch (error) {
+      alert('Failed to seed data. Make sure you are logged in and database is configured.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -296,6 +359,14 @@ function App() {
 
   return (
     <div className="App">
+      {/* Dev Mode Banner */}
+      {isDev && (
+        <div className="dev-banner">
+          <Sparkles size={14} />
+          <span>Development Mode</span>
+        </div>
+      )}
+      
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
@@ -304,13 +375,61 @@ function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className="nav-item active">
-            <Home size={18} />
-            <span>Dashboard</span>
-          </button>
-          
-          {!token && !DISABLE_AUTH ? (
+          {token ? (
             <>
+              <button 
+                className={`nav-item ${currentPage === 'dashboard' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('dashboard')}
+              >
+                <BarChart3 size={18} />
+                <span>Dashboard</span>
+              </button>
+              
+              <button 
+                className={`nav-item ${currentPage === 'library' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('library')}
+              >
+                <Library size={18} />
+                <span>Clips Library</span>
+              </button>
+              
+              <button 
+                className={`nav-item ${currentPage === 'generate' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('generate')}
+              >
+                <Sparkles size={18} />
+                <span>Generate Clips</span>
+              </button>
+              
+              <div className="nav-divider"></div>
+              
+              <div className="nav-item user-item">
+                <User size={18} />
+                <span className="user-email-nav">{userEmail}</span>
+              </div>
+              
+              {isDev && (
+                <button className="nav-item dev-seed-btn" onClick={handleSeedData}>
+                  <Sparkles size={18} />
+                  <span>Seed Sample Data</span>
+                </button>
+              )}
+              
+              <button className="nav-item" onClick={handleLogout}>
+                <LogOut size={18} />
+                <span>Logout</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                className={`nav-item ${currentPage === 'generate' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('generate')}
+              >
+                <Home size={18} />
+                <span>Home</span>
+              </button>
+              
               <button className="nav-item" onClick={() => openAuthModal('login')}>
                 <User size={18} />
                 <span>Login</span>
@@ -319,24 +438,18 @@ function App() {
                 <UserPlus size={18} />
                 <span>Sign Up</span>
               </button>
-            </>
-          ) : (
-            <>
-              <div className="nav-item user-item">
-                <User size={18} />
-                <span className="user-email-nav">{userEmail}</span>
-              </div>
-              <button className="nav-item" onClick={handleLogout}>
-                <LogOut size={18} />
-                <span>Logout</span>
-              </button>
+              
+              {isDev && (
+                <>
+                  <div className="nav-divider"></div>
+                  <button className="nav-item dev-login-btn" onClick={handleDevLogin}>
+                    <Sparkles size={18} />
+                    <span>Dev Login</span>
+                  </button>
+                </>
+              )}
             </>
           )}
-
-          <button className="nav-item">
-            <Settings size={18} />
-            <span>Settings</span>
-          </button>
         </nav>
       </aside>
 
@@ -410,6 +523,17 @@ function App() {
 
       {/* Main Content */}
       <main className="main-content">
+        {/* Render different pages based on currentPage */}
+        {currentPage === 'dashboard' && token && (
+          <Dashboard token={token} />
+        )}
+        
+        {currentPage === 'library' && token && (
+          <ClipsLibrary token={token} />
+        )}
+        
+        {currentPage === 'generate' && (
+          <>
         {/* Video Input Section */}
         <section className="video-input-section">
           <h2>
@@ -590,6 +714,8 @@ function App() {
               ))}
             </div>
           </section>
+        )}
+          </>
         )}
       </main>
     </div>

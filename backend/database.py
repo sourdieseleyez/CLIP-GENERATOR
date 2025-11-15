@@ -3,94 +3,123 @@ Database Models and Connection
 Uses SQLAlchemy with PostgreSQL (Neon, Railway, etc.)
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, Float
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
 from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+# Try to import SQLAlchemy - it's optional
+try:
+    from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, Float
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import sessionmaker, Session
+    SQLALCHEMY_AVAILABLE = True
+except ImportError:
+    SQLALCHEMY_AVAILABLE = False
+    logger.warning("SQLAlchemy not installed - database features disabled. Install with: pip install sqlalchemy psycopg[binary]")
+
+if SQLALCHEMY_AVAILABLE:
+    Base = declarative_base()
+else:
+    Base = None
 
 
-class User(Base):
-    """User model"""
-    __tablename__ = "users"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    disabled = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+if SQLALCHEMY_AVAILABLE:
+    class User(Base):
+        """User model"""
+        __tablename__ = "users"
+        
+        id = Column(Integer, primary_key=True, index=True)
+        email = Column(String, unique=True, index=True, nullable=False)
+        hashed_password = Column(String, nullable=False)
+        disabled = Column(Boolean, default=False)
+        created_at = Column(DateTime, default=datetime.utcnow)
+        updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+else:
+    User = None
 
 
-class Video(Base):
-    """Video model"""
-    __tablename__ = "videos"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String, index=True, nullable=False)
-    filename = Column(String, nullable=False)
-    storage_key = Column(String, nullable=True)  # S3 key if uploaded to cloud
-    local_path = Column(String, nullable=True)   # Local path if not using cloud
-    size = Column(Integer, nullable=False)
-    source_type = Column(String, nullable=False)  # 'upload', 'youtube', 'url'
-    source_url = Column(String, nullable=True)
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+if SQLALCHEMY_AVAILABLE:
+    class Video(Base):
+        """Video model"""
+        __tablename__ = "videos"
+        
+        id = Column(Integer, primary_key=True, index=True)
+        user_email = Column(String, index=True, nullable=False)
+        filename = Column(String, nullable=False)
+        storage_key = Column(String, nullable=True)  # S3 key if uploaded to cloud
+        local_path = Column(String, nullable=True)   # Local path if not using cloud
+        size = Column(Integer, nullable=False)
+        source_type = Column(String, nullable=False)  # 'upload', 'youtube', 'url'
+        source_url = Column(String, nullable=True)
+        uploaded_at = Column(DateTime, default=datetime.utcnow)
+else:
+    Video = None
 
 
-class Job(Base):
-    """Processing job model"""
-    __tablename__ = "jobs"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(String, unique=True, index=True, nullable=False)
-    user_email = Column(String, index=True, nullable=False)
-    video_id = Column(Integer, nullable=True)
-    status = Column(String, default="queued")  # queued, processing, completed, failed
-    progress = Column(Integer, default=0)
-    message = Column(String, nullable=True)
-    error = Column(Text, nullable=True)
-    
-    # Processing parameters
-    num_clips = Column(Integer, default=5)
-    clip_duration = Column(Integer, default=30)
-    resolution = Column(String, default="portrait")
-    
-    # Results
-    transcription = Column(Text, nullable=True)
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+if SQLALCHEMY_AVAILABLE:
+    class Job(Base):
+        """Processing job model"""
+        __tablename__ = "jobs"
+        
+        id = Column(Integer, primary_key=True, index=True)
+        job_id = Column(String, unique=True, index=True, nullable=False)
+        user_email = Column(String, index=True, nullable=False)
+        video_id = Column(Integer, nullable=True)
+        status = Column(String, default="queued")  # queued, processing, completed, failed
+        progress = Column(Integer, default=0)
+        message = Column(String, nullable=True)
+        error = Column(Text, nullable=True)
+        
+        # Processing parameters
+        num_clips = Column(Integer, default=5)
+        clip_duration = Column(Integer, default=30)
+        resolution = Column(String, default="portrait")
+        
+        # Results
+        transcription = Column(Text, nullable=True)
+        
+        created_at = Column(DateTime, default=datetime.utcnow)
+        updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        completed_at = Column(DateTime, nullable=True)
+else:
+    Job = None
 
 
-class Clip(Base):
-    """Generated clip model"""
-    __tablename__ = "clips"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(String, index=True, nullable=False)
-    clip_number = Column(Integer, nullable=False)
-    
-    # Storage
-    storage_key = Column(String, nullable=True)  # S3 key
-    local_path = Column(String, nullable=True)   # Local path (fallback)
-    
-    # Metadata
-    start_time = Column(Float, nullable=False)
-    end_time = Column(Float, nullable=False)
-    duration = Column(Float, nullable=False)
-    text = Column(Text, nullable=True)
-    hook = Column(String, nullable=True)
-    reason = Column(Text, nullable=True)
-    category = Column(String, nullable=True)
-    virality_score = Column(Integer, nullable=True)
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
+if SQLALCHEMY_AVAILABLE:
+    class Clip(Base):
+        """Generated clip model"""
+        __tablename__ = "clips"
+        
+        id = Column(Integer, primary_key=True, index=True)
+        job_id = Column(String, index=True, nullable=False)
+        clip_number = Column(Integer, nullable=False)
+        
+        # Storage
+        storage_key = Column(String, nullable=True)  # S3 key
+        local_path = Column(String, nullable=True)   # Local path (fallback)
+        
+        # Metadata
+        start_time = Column(Float, nullable=False)
+        end_time = Column(Float, nullable=False)
+        duration = Column(Float, nullable=False)
+        text = Column(Text, nullable=True)
+        hook = Column(String, nullable=True)
+        reason = Column(Text, nullable=True)
+        category = Column(String, nullable=True)
+        virality_score = Column(Integer, nullable=True)
+        
+        # Analytics & Performance Tracking
+        views = Column(Integer, default=0)
+        revenue = Column(Float, default=0.0)  # In dollars
+        platform = Column(String, nullable=True)  # 'tiktok', 'youtube', 'instagram', etc.
+        posted_at = Column(DateTime, nullable=True)
+        last_updated = Column(DateTime, nullable=True)
+        
+        created_at = Column(DateTime, default=datetime.utcnow)
+else:
+    Clip = None
 
 
 # Database connection
@@ -107,6 +136,10 @@ def init_database(database_url: str):
                      e.g., postgresql://user:pass@host:5432/dbname
     """
     global _engine, _SessionLocal
+    
+    if not SQLALCHEMY_AVAILABLE:
+        logger.error("SQLAlchemy not installed. Install with: pip install sqlalchemy psycopg[binary]")
+        return False
     
     try:
         _engine = create_engine(
@@ -130,7 +163,7 @@ def init_database(database_url: str):
         return False
 
 
-def get_db() -> Session:
+def get_db():
     """
     Get database session
     

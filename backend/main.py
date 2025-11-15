@@ -293,6 +293,217 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 async def root():
     return {"message": "Clip Generator API", "status": "running"}
 
+@app.post("/dev/login")
+async def dev_login():
+    """
+    Development-only login endpoint
+    Creates/returns a dev user with a token
+    WARNING: Only use in development!
+    """
+    # Check if we're in development mode
+    is_dev = os.getenv("ENVIRONMENT", "development") == "development"
+    
+    if not is_dev:
+        raise HTTPException(status_code=403, detail="Dev login only available in development mode")
+    
+    dev_email = "dev@clipgen.local"
+    dev_password = "devpass123"
+    
+    # Create or get dev user
+    if is_database_enabled():
+        db = get_db()
+        try:
+            user = db.query(DBUser).filter(DBUser.email == dev_email).first()
+            if not user:
+                hashed_password = get_password_hash(dev_password)
+                user = DBUser(email=dev_email, hashed_password=hashed_password, disabled=False)
+                db.add(user)
+                db.commit()
+                logger.info("Created dev user")
+        finally:
+            db.close()
+    else:
+        # In-memory
+        if dev_email not in users_db:
+            users_db[dev_email] = {
+                "email": dev_email,
+                "hashed_password": get_password_hash(dev_password),
+                "disabled": False
+            }
+    
+    # Generate token
+    access_token = create_access_token(data={"sub": dev_email})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "email": dev_email,
+        "message": "Dev login successful"
+    }
+
+@app.post("/dev/seed-data")
+async def seed_dev_data(current_user: dict = Depends(get_current_user)):
+    """
+    Seed sample clips data for testing
+    WARNING: Only use in development!
+    """
+    is_dev = os.getenv("ENVIRONMENT", "development") == "development"
+    
+    if not is_dev:
+        raise HTTPException(status_code=403, detail="Seed data only available in development mode")
+    
+    if not is_database_enabled():
+        raise HTTPException(status_code=501, detail="Database required for seeding")
+    
+    db = get_db()
+    try:
+        # Create a sample job
+        job_id = str(uuid.uuid4())
+        job = DBJob(
+            job_id=job_id,
+            user_email=current_user["email"],
+            status="completed",
+            progress=100,
+            message="Sample data",
+            num_clips=10,
+            clip_duration=30,
+            resolution="portrait",
+            transcription="Sample transcription for testing"
+        )
+        db.add(job)
+        db.commit()
+        
+        # Sample clips with realistic data
+        sample_clips = [
+            {
+                "hook": "This is the craziest thing I've ever seen!",
+                "text": "You won't believe what happened next. This is absolutely insane and everyone needs to see this.",
+                "category": "surprising",
+                "platform": "tiktok",
+                "views": 125000,
+                "revenue": 3.75,
+                "virality_score": 9
+            },
+            {
+                "hook": "Here's why everyone is talking about this",
+                "text": "The secret that nobody wants you to know. This changes everything we thought we knew.",
+                "category": "controversial",
+                "platform": "youtube",
+                "views": 85000,
+                "revenue": 6.80,
+                "virality_score": 8
+            },
+            {
+                "hook": "Wait for it... 😂",
+                "text": "The timing on this is absolutely perfect. I can't stop laughing at this moment.",
+                "category": "humor",
+                "platform": "instagram",
+                "views": 67000,
+                "revenue": 1.34,
+                "virality_score": 7
+            },
+            {
+                "hook": "This will blow your mind",
+                "text": "I never knew this was possible until today. The science behind this is fascinating.",
+                "category": "educational",
+                "platform": "youtube",
+                "views": 45000,
+                "revenue": 3.60,
+                "virality_score": 6
+            },
+            {
+                "hook": "The moment that changed everything",
+                "text": "This emotional moment hit different. You can see the exact second everything clicked.",
+                "category": "emotional",
+                "platform": "tiktok",
+                "views": 92000,
+                "revenue": 2.76,
+                "virality_score": 8
+            },
+            {
+                "hook": "Nobody expected this to happen",
+                "text": "The plot twist of the century. This came out of nowhere and shocked everyone watching.",
+                "category": "surprising",
+                "platform": "instagram",
+                "views": 38000,
+                "revenue": 0.76,
+                "virality_score": 7
+            },
+            {
+                "hook": "Here's the truth they don't want you to know",
+                "text": "Breaking down the real facts behind the controversy. This is what's really going on.",
+                "category": "controversial",
+                "platform": "youtube",
+                "views": 156000,
+                "revenue": 12.48,
+                "virality_score": 9
+            },
+            {
+                "hook": "I can't believe this actually worked",
+                "text": "Testing this viral hack to see if it's real. The results are actually surprising.",
+                "category": "educational",
+                "platform": "tiktok",
+                "views": 73000,
+                "revenue": 2.19,
+                "virality_score": 6
+            },
+            {
+                "hook": "This is too funny 💀",
+                "text": "The comedic timing here is absolutely perfect. Watch until the end for the best part.",
+                "category": "humor",
+                "platform": "instagram",
+                "views": 54000,
+                "revenue": 1.08,
+                "virality_score": 7
+            },
+            {
+                "hook": "The most wholesome moment ever",
+                "text": "This restored my faith in humanity. Such a beautiful and touching moment captured on camera.",
+                "category": "emotional",
+                "platform": "youtube",
+                "views": 28000,
+                "revenue": 2.24,
+                "virality_score": 5
+            }
+        ]
+        
+        for i, clip_data in enumerate(sample_clips):
+            clip = DBClip(
+                job_id=job_id,
+                clip_number=i + 1,
+                start_time=float(i * 30),
+                end_time=float((i + 1) * 30),
+                duration=30.0,
+                text=clip_data["text"],
+                hook=clip_data["hook"],
+                reason=f"High engagement potential in {clip_data['category']} category",
+                category=clip_data["category"],
+                virality_score=clip_data["virality_score"],
+                views=clip_data["views"],
+                revenue=clip_data["revenue"],
+                platform=clip_data["platform"],
+                posted_at=datetime.utcnow() - timedelta(days=i),
+                last_updated=datetime.utcnow()
+            )
+            db.add(clip)
+        
+        db.commit()
+        
+        logger.info(f"Seeded {len(sample_clips)} sample clips for dev user")
+        
+        return {
+            "message": "Sample data created successfully",
+            "clips_created": len(sample_clips),
+            "job_id": job_id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error seeding data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to seed data: {str(e)}")
+    finally:
+        db.close()
+
 @app.post("/users/register", response_model=User)
 async def register(user: UserCreate, password: str):
     if is_database_enabled():
@@ -1023,6 +1234,281 @@ async def download_clip(
     except Exception as e:
         logger.error(f"Error downloading clip: {str(e)}")
         raise HTTPException(status_code=500, detail="Download failed")
+
+@app.get("/clips")
+async def get_all_clips(
+    platform: Optional[str] = None,
+    category: Optional[str] = None,
+    sort_by: str = "created_at",
+    order: str = "desc",
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all clips for current user with optional filters"""
+    try:
+        if not is_database_enabled():
+            raise HTTPException(status_code=501, detail="Database not configured")
+        
+        db = get_db()
+        try:
+            # Get all jobs for user
+            user_jobs = db.query(DBJob).filter(DBJob.user_email == current_user["email"]).all()
+            job_ids = [job.job_id for job in user_jobs]
+            
+            # Query clips
+            query = db.query(DBClip).filter(DBClip.job_id.in_(job_ids))
+            
+            # Apply filters
+            if platform:
+                query = query.filter(DBClip.platform == platform)
+            if category:
+                query = query.filter(DBClip.category == category)
+            
+            # Apply sorting
+            if sort_by == "views":
+                query = query.order_by(DBClip.views.desc() if order == "desc" else DBClip.views.asc())
+            elif sort_by == "revenue":
+                query = query.order_by(DBClip.revenue.desc() if order == "desc" else DBClip.revenue.asc())
+            elif sort_by == "virality_score":
+                query = query.order_by(DBClip.virality_score.desc() if order == "desc" else DBClip.virality_score.asc())
+            else:  # created_at
+                query = query.order_by(DBClip.created_at.desc() if order == "desc" else DBClip.created_at.asc())
+            
+            clips = query.all()
+            
+            return {
+                "clips": [
+                    {
+                        "id": clip.id,
+                        "clip_number": clip.clip_number,
+                        "job_id": clip.job_id,
+                        "start_time": clip.start_time,
+                        "end_time": clip.end_time,
+                        "duration": clip.duration,
+                        "text": clip.text,
+                        "hook": clip.hook,
+                        "reason": clip.reason,
+                        "category": clip.category,
+                        "virality_score": clip.virality_score,
+                        "views": clip.views,
+                        "revenue": clip.revenue,
+                        "platform": clip.platform,
+                        "posted_at": clip.posted_at.isoformat() if clip.posted_at else None,
+                        "created_at": clip.created_at.isoformat(),
+                        "storage_key": clip.storage_key
+                    }
+                    for clip in clips
+                ],
+                "total": len(clips)
+            }
+        finally:
+            db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching clips: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch clips")
+
+@app.get("/clips/{clip_id}")
+async def get_clip_details(
+    clip_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get detailed information about a specific clip"""
+    try:
+        if not is_database_enabled():
+            raise HTTPException(status_code=501, detail="Database not configured")
+        
+        db = get_db()
+        try:
+            clip = db.query(DBClip).filter(DBClip.id == clip_id).first()
+            if not clip:
+                raise HTTPException(status_code=404, detail="Clip not found")
+            
+            # Verify ownership
+            job = db.query(DBJob).filter(DBJob.job_id == clip.job_id).first()
+            if not job or job.user_email != current_user["email"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+            
+            return {
+                "id": clip.id,
+                "clip_number": clip.clip_number,
+                "job_id": clip.job_id,
+                "start_time": clip.start_time,
+                "end_time": clip.end_time,
+                "duration": clip.duration,
+                "text": clip.text,
+                "hook": clip.hook,
+                "reason": clip.reason,
+                "category": clip.category,
+                "virality_score": clip.virality_score,
+                "views": clip.views,
+                "revenue": clip.revenue,
+                "platform": clip.platform,
+                "posted_at": clip.posted_at.isoformat() if clip.posted_at else None,
+                "last_updated": clip.last_updated.isoformat() if clip.last_updated else None,
+                "created_at": clip.created_at.isoformat(),
+                "storage_key": clip.storage_key,
+                "local_path": clip.local_path
+            }
+        finally:
+            db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching clip details: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch clip details")
+
+class ClipAnalyticsUpdate(BaseModel):
+    views: Optional[int] = None
+    revenue: Optional[float] = None
+    platform: Optional[str] = None
+    posted_at: Optional[str] = None
+    
+    @validator('platform')
+    def validate_platform(cls, v):
+        if v and v not in ['tiktok', 'youtube', 'instagram', 'facebook', 'twitter', 'other']:
+            raise ValueError('Invalid platform')
+        return v
+
+@app.put("/clips/{clip_id}/analytics")
+async def update_clip_analytics(
+    clip_id: int,
+    analytics: ClipAnalyticsUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update analytics data for a clip"""
+    try:
+        if not is_database_enabled():
+            raise HTTPException(status_code=501, detail="Database not configured")
+        
+        db = get_db()
+        try:
+            clip = db.query(DBClip).filter(DBClip.id == clip_id).first()
+            if not clip:
+                raise HTTPException(status_code=404, detail="Clip not found")
+            
+            # Verify ownership
+            job = db.query(DBJob).filter(DBJob.job_id == clip.job_id).first()
+            if not job or job.user_email != current_user["email"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+            
+            # Update fields
+            if analytics.views is not None:
+                clip.views = analytics.views
+            if analytics.revenue is not None:
+                clip.revenue = analytics.revenue
+            if analytics.platform is not None:
+                clip.platform = analytics.platform
+            if analytics.posted_at is not None:
+                clip.posted_at = datetime.fromisoformat(analytics.posted_at)
+            
+            clip.last_updated = datetime.utcnow()
+            db.commit()
+            
+            logger.info(f"Updated analytics for clip {clip_id}")
+            
+            return {
+                "message": "Analytics updated successfully",
+                "clip_id": clip_id,
+                "views": clip.views,
+                "revenue": clip.revenue,
+                "platform": clip.platform
+            }
+        finally:
+            db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating clip analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update analytics")
+
+@app.get("/analytics/dashboard")
+async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)):
+    """Get dashboard analytics summary"""
+    try:
+        if not is_database_enabled():
+            raise HTTPException(status_code=501, detail="Database not configured")
+        
+        db = get_db()
+        try:
+            # Get all user's jobs
+            user_jobs = db.query(DBJob).filter(DBJob.user_email == current_user["email"]).all()
+            job_ids = [job.job_id for job in user_jobs]
+            
+            # Get all clips
+            clips = db.query(DBClip).filter(DBClip.job_id.in_(job_ids)).all()
+            
+            # Calculate stats
+            total_clips = len(clips)
+            total_views = sum(clip.views for clip in clips)
+            total_revenue = sum(clip.revenue for clip in clips)
+            
+            # Platform breakdown
+            platform_stats = {}
+            for clip in clips:
+                if clip.platform:
+                    if clip.platform not in platform_stats:
+                        platform_stats[clip.platform] = {"clips": 0, "views": 0, "revenue": 0}
+                    platform_stats[clip.platform]["clips"] += 1
+                    platform_stats[clip.platform]["views"] += clip.views
+                    platform_stats[clip.platform]["revenue"] += clip.revenue
+            
+            # Category breakdown
+            category_stats = {}
+            for clip in clips:
+                if clip.category:
+                    if clip.category not in category_stats:
+                        category_stats[clip.category] = {"clips": 0, "views": 0, "avg_virality": 0}
+                    category_stats[clip.category]["clips"] += 1
+                    category_stats[clip.category]["views"] += clip.views
+            
+            # Calculate average virality per category
+            for category in category_stats:
+                category_clips = [c for c in clips if c.category == category and c.virality_score]
+                if category_clips:
+                    category_stats[category]["avg_virality"] = sum(c.virality_score for c in category_clips) / len(category_clips)
+            
+            # Top performing clips
+            top_clips = sorted(clips, key=lambda x: x.views, reverse=True)[:5]
+            
+            # Recent activity (last 30 days)
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            recent_clips = [c for c in clips if c.created_at >= thirty_days_ago]
+            
+            return {
+                "summary": {
+                    "total_clips": total_clips,
+                    "total_views": total_views,
+                    "total_revenue": round(total_revenue, 2),
+                    "avg_views_per_clip": round(total_views / total_clips, 2) if total_clips > 0 else 0,
+                    "avg_revenue_per_clip": round(total_revenue / total_clips, 2) if total_clips > 0 else 0
+                },
+                "platform_stats": platform_stats,
+                "category_stats": category_stats,
+                "top_clips": [
+                    {
+                        "id": clip.id,
+                        "hook": clip.hook,
+                        "views": clip.views,
+                        "revenue": clip.revenue,
+                        "platform": clip.platform,
+                        "virality_score": clip.virality_score
+                    }
+                    for clip in top_clips
+                ],
+                "recent_activity": {
+                    "clips_created": len(recent_clips),
+                    "views_gained": sum(c.views for c in recent_clips),
+                    "revenue_earned": round(sum(c.revenue for c in recent_clips), 2)
+                }
+            }
+        finally:
+            db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching dashboard analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch analytics")
 
 @app.get("/health")
 async def health_check():
