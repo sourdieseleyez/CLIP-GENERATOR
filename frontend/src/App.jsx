@@ -22,6 +22,8 @@ import CustomSelect from './CustomSelect';
 import Dashboard from './Dashboard';
 import ClipsLibrary from './ClipsLibrary';
 import Marketplace from './Marketplace';
+import CreateCampaign from './CreateCampaign';
+import SubmitJob from './SubmitJob';
 
 function App() {
   // Check if we're in development mode
@@ -49,6 +51,9 @@ function App() {
   const [clipDuration, setClipDuration] = useState(30);
   const [resolution, setResolution] = useState('portrait');
   
+  // Marketplace job context
+  const [activeJob, setActiveJob] = useState(null);
+  
   // Processing state
   const [loading, setLoading] = useState(false);
   const [processingStatus, setProcessingStatus] = useState(null);
@@ -61,6 +66,15 @@ function App() {
       // set a dummy token and user email; backend should accept any token when DISABLE_AUTH is enabled
       setToken('dev-token');
       setUserEmail('dev@localhost');
+    }
+    
+    // Check if user came from landing page signup
+    const signupEmail = sessionStorage.getItem('signupEmail');
+    if (signupEmail) {
+      sessionStorage.removeItem('signupEmail');
+      setEmail(signupEmail);
+      setAuthMode('register');
+      setShowAuthModal(true);
     }
   }, []);
 
@@ -384,7 +398,7 @@ function App() {
                 onClick={() => setCurrentPage('dashboard')}
               >
                 <BarChart3 size={18} />
-                <span>Dashboard</span>
+                <span>Analytics</span>
               </button>
               
               <button 
@@ -539,7 +553,35 @@ function App() {
         )}
         
         {currentPage === 'marketplace' && token && (
-          <Marketplace token={token} />
+          <Marketplace 
+            token={token} 
+            onStartJob={(job, campaign) => {
+              setActiveJob({ job, campaign });
+              setVideoUrl(campaign.video_url);
+              setNumClips(campaign.num_clips_needed);
+              setClipDuration(campaign.clip_duration);
+              setResolution(campaign.resolution);
+              setInputType('url');
+              setCurrentPage('generate');
+            }}
+          />
+        )}
+        
+        {currentPage === 'create-campaign' && token && (
+          <CreateCampaign token={token} onSuccess={() => setCurrentPage('marketplace')} />
+        )}
+        
+        {currentPage === 'submit-job' && token && activeJob && (
+          <SubmitJob 
+            token={token} 
+            job={activeJob} 
+            clips={clips}
+            onSuccess={() => {
+              setActiveJob(null);
+              setClips([]);
+              setCurrentPage('marketplace');
+            }}
+          />
         )}
         
         {currentPage === 'library' && token && (
@@ -691,7 +733,17 @@ function App() {
         {/* Results */}
         {clips.length > 0 && (
           <section className="results-section">
-            <h3>Generated Clips</h3>
+            <div className="results-header">
+              <h3>Generated Clips</h3>
+              {activeJob && (
+                <button 
+                  className="submit-job-btn"
+                  onClick={() => setCurrentPage('submit-job')}
+                >
+                  Submit to Campaign
+                </button>
+              )}
+            </div>
             <div className="clips-grid">
               {clips.map((clip) => (
                 <div key={clip.id} className="clip-card">
