@@ -49,6 +49,22 @@ if SQLALCHEMY_AVAILABLE:
         hashed_password = Column(String, nullable=False)
         disabled = Column(Boolean, default=False)
         
+        # Email verification
+        email_verified = Column(Boolean, default=False)
+        verification_token = Column(String, nullable=True)
+        verification_token_expires = Column(DateTime, nullable=True)
+        
+        # Password reset
+        reset_token = Column(String, nullable=True)
+        reset_token_expires = Column(DateTime, nullable=True)
+        
+        # Credits system
+        credits = Column(Integer, default=3)  # Free credits for new users
+        lifetime_credits_purchased = Column(Integer, default=0)
+        
+        # Admin flag
+        is_admin = Column(Boolean, default=False)
+        
         # Marketplace fields
         role = Column(Enum(UserRole), default=UserRole.BOTH)
         tier = Column(Enum(UserTier), default=UserTier.BRONZE)
@@ -130,8 +146,13 @@ if SQLALCHEMY_AVAILABLE:
         clip_number = Column(Integer, nullable=False)
         
         # Storage
-        storage_key = Column(String, nullable=True)  # S3 key
+        storage_key = Column(String, nullable=True)  # S3 key (full quality)
+        storage_key_preview = Column(String, nullable=True)  # S3 key (watermarked preview)
         local_path = Column(String, nullable=True)   # Local path (fallback)
+        
+        # Download tracking
+        is_paid = Column(Boolean, default=False)  # Whether user paid/used credits for this clip
+        download_count = Column(Integer, default=0)
         
         # Metadata
         start_time = Column(Float, nullable=False)

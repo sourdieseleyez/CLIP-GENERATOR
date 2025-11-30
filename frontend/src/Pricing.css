@@ -1,0 +1,235 @@
+.pricing-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pricing-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.pricing-header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.pricing-header p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+.pricing-loading {
+  text-align: center;
+  padding: 4rem;
+  color: var(--text-secondary);
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.pricing-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pricing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.pricing-card.popular {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--primary);
+  color: white;
+  padding: 0.25rem 1rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pricing-credits {
+  margin-bottom: 1rem;
+}
+
+.credits-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.credits-label {
+  display: block;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pricing-price {
+  margin-bottom: 0.5rem;
+}
+
+.price-currency {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  vertical-align: top;
+}
+
+.price-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pricing-per-credit {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.pricing-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+  text-align: left;
+}
+
+.pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.pricing-features li svg {
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.pricing-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.pricing-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary);
+}
+
+.pricing-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.pricing-btn.primary:hover {
+  background: var(--primary-dark);
+}
+
+.pricing-footer {
+  text-align: center;
+}
+
+.pricing-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  color: var(--text-primary);
+}
+
+.pricing-note svg {
+  color: var(--primary);
+}
+
+.pricing-faq {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.pricing-faq h3 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.faq-item {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-item strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.faq-item p {
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .pricing-page {
+    padding: 1rem;
+  }
+  
+  .pricing-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}

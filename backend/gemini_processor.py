@@ -14,27 +14,66 @@ Streaming: Real-time progress updates for better UX
 import os
 import json
 import tempfile
-import whisper
-import ffmpeg_helpers
-import subtitles
-import scene_detection
-import emotion_detector
+import shutil
+import uuid
+import logging
+from typing import List, Dict, Optional, Callable
+import requests
+
+logger = logging.getLogger(__name__)
+
+# Optional whisper import (requires openai-whisper package)
+try:
+    import whisper
+except ImportError:
+    whisper = None
+    logger.warning("openai-whisper not installed - transcription will be unavailable")
+
 # Optional faster-whisper import
 try:
     from faster_whisper import WhisperModel as FasterWhisperModel
-except Exception:
+except ImportError:
     FasterWhisperModel = None
-import shutil
-import uuid
-from pytube import YouTube
-from typing import List, Dict, Optional, Callable
-import requests
-import google.generativeai as genai
+
+# Optional helper modules (graceful degradation if not available)
+try:
+    import ffmpeg_helpers
+except ImportError:
+    ffmpeg_helpers = None
+
+try:
+    import subtitles
+except ImportError:
+    subtitles = None
+
+try:
+    import scene_detection
+except ImportError:
+    scene_detection = None
+
+try:
+    import emotion_detector
+except ImportError:
+    emotion_detector = None
+
+# Optional pytube for YouTube downloads
+try:
+    from pytube import YouTube
+except ImportError:
+    YouTube = None
+    logger.warning("pytube not installed - YouTube downloads will be unavailable")
+
+# Optional google-generativeai
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+    logger.warning("google-generativeai not installed - AI analysis will be unavailable")
 
 # Optional import for yt-dlp to support many streaming sites (Kick, Twitch, etc.)
 try:
     import yt_dlp as ytdlp
-except Exception:
+except ImportError:
     ytdlp = None
 
 
@@ -43,35 +82,46 @@ class GeminiVideoProcessor:
         self.gemini_api_key = gemini_api_key
         self.whisper_model = None
         self.stt_engine = stt_engine or "whisper"
-        genai.configure(api_key=gemini_api_key)
-
-        # Use Gemini 2.5 Flash Lite - cheapest option with streaming support
-        # 133x cheaper than GPT-4!
-        self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        self.model = None
+        
+        if genai is not None:
+            genai.configure(api_key=gemini_api_key)
+            # Use Gemini 2.5 Flash Lite - cheapest option with streaming support
+            # 133x cheaper than GPT-4!
+            self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        else:
+            logger.warning("Gemini AI not available - AI analysis disabled")
     
     def load_whisper_model(self):
         """Load the configured STT model for transcription"""
         if self.whisper_model is not None:
             return self.whisper_model
 
-        print(f"Loading STT model: {self.stt_engine}...")
-        # Local OpenAI whisper
-        if self.stt_engine == "whisper" or self.stt_engine == "openai-whisper":
-            self.whisper_model = whisper.load_model("base")
-            return self.whisper_model
-
-        # faster-whisper (if available)
+        logger.info(f"Loading STT model: {self.stt_engine}...")
+        
+        # faster-whisper (if available and requested)
         if self.stt_engine == "faster-whisper" and FasterWhisperModel is not None:
             # load a reasonably small model by default
             self.whisper_model = FasterWhisperModel("small")
             return self.whisper_model
 
-        # Fallback to whisper
-        self.whisper_model = whisper.load_model("base")
-        return self.whisper_model
+        # Local OpenAI whisper
+        if whisper is not None:
+            self.whisper_model = whisper.load_model("base")
+            return self.whisper_model
+        
+        raise RuntimeError("No speech-to-text engine available. Install openai-whisper or faster-whisper.")
     
     def download_youtube_video(self, url: str) -> str:
         """Download YouTube video and return local path"""
+        # Prefer yt-dlp if available (more reliable)
+        if ytdlp is not None:
+            return self._download_with_ytdlp(url)
+        
+        # Fallback to pytube
+        if YouTube is None:
+            raise RuntimeError("No YouTube downloader available. Install pytube or yt-dlp.")
+        
         try:
             yt = YouTube(url)
             stream = (
@@ -226,14 +276,15 @@ class GeminiVideoProcessor:
             # faster-whisper API
             if self.stt_engine == "faster-whisper" and FasterWhisperModel is not None:
                 segments = []
-                # faster-whisper returns an iterator of segments
-                for segment in model.transcribe(video_path, beam_size=5, word_timestamps=True):
+                # faster-whisper returns a tuple: (segment_generator, info)
+                segment_generator, info = model.transcribe(video_path, beam_size=5, word_timestamps=True)
+                for segment in segment_generator:
                     segments.append({
                         "start": float(segment.start),
                         "end": float(segment.end),
                         "text": segment.text
                     })
-                full_text = "\n".join([s["text"] for s in segments])
+                full_text = " ".join([s["text"].strip() for s in segments])
                 return {"text": full_text, "segments": segments}
 
             # Default: openai-whisper python package
@@ -558,23 +609,29 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
                 use_streaming=True
             )
 
-            # Step 2b: Energy-based scoring (fast heuristic)
-            try:
-                energy_windows = ffmpeg_helpers.get_top_energy_windows(video_path, window_size_sec=1.0, top_k=max(20, num_clips * 4))
-            except Exception:
-                energy_windows = []
+            # Step 2b: Energy-based scoring (fast heuristic) - optional enhancement
+            energy_windows = []
+            if ffmpeg_helpers is not None:
+                try:
+                    energy_windows = ffmpeg_helpers.get_top_energy_windows(video_path, window_size_sec=1.0, top_k=max(20, num_clips * 4))
+                except Exception as e:
+                    logger.debug(f"Energy detection skipped: {e}")
 
-            # Scene detection (camera cuts)
-            try:
-                scene_timestamps = scene_detection.detect_scenes(video_path, scene_threshold=0.35)
-            except Exception:
-                scene_timestamps = []
+            # Scene detection (camera cuts) - optional enhancement
+            scene_timestamps = []
+            if scene_detection is not None:
+                try:
+                    scene_timestamps = scene_detection.detect_scenes(video_path, scene_threshold=0.35)
+                except Exception as e:
+                    logger.debug(f"Scene detection skipped: {e}")
 
-            # Audio "hype" events: laughter, cheers, shouts
-            try:
-                audio_hype_events = emotion_detector.detect_audio_hype_events(video_path, window_size_sec=0.5, rms_multiplier=2.0)
-            except Exception:
-                audio_hype_events = []
+            # Audio "hype" events: laughter, cheers, shouts - optional enhancement
+            audio_hype_events = []
+            if emotion_detector is not None:
+                try:
+                    audio_hype_events = emotion_detector.detect_audio_hype_events(video_path, window_size_sec=0.5, rms_multiplier=2.0)
+                except Exception as e:
+                    logger.debug(f"Hype detection skipped: {e}")
 
             # Attach energy score to each segment: average RMS of overlapping windows
             for seg in segments:
@@ -636,19 +693,22 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
             
             generated_clips = []
 
-            # create SRT/VTT for full transcription
-            try:
-                srt_path = tempfile.mktemp(suffix=".srt")
-                vtt_path = tempfile.mktemp(suffix=".vtt")
-                subtitles.create_srt_from_transcription(transcription_result, srt_path)
-                subtitles.create_vtt_from_srt(srt_path, vtt_path)
-            except Exception:
-                srt_path = None
-                vtt_path = None
+            # create SRT/VTT for full transcription (optional)
+            srt_path = None
+            vtt_path = None
+            if subtitles is not None:
+                try:
+                    srt_path = tempfile.mktemp(suffix=".srt")
+                    vtt_path = tempfile.mktemp(suffix=".vtt")
+                    subtitles.create_srt_from_transcription(transcription_result, srt_path)
+                    subtitles.create_vtt_from_srt(srt_path, vtt_path)
+                except Exception as e:
+                    logger.debug(f"Subtitle generation skipped: {e}")
+                    srt_path = None
+                    vtt_path = None
 
             for i, segment in enumerate(segments):
                 output_path = tempfile.mktemp(suffix=f"_clip_{i+1}.mp4")
-                preview_path = tempfile.mktemp(suffix=f"_preview_{i+1}.mp4")
 
                 # Update progress
                 clip_progress = 65 + int((i / len(segments)) * 30)
@@ -659,11 +719,14 @@ Sort by virality_score (highest first). Return ONLY the JSON array, no other tex
                 start = float(segment["start"])
                 end = min(float(segment["end"]), start + clip_duration)
 
-                # Fast preview: try lossless copy clip (very fast)
-                try:
-                    ffmpeg_helpers.fast_clip_copy(video_path, start, end - start, preview_path)
-                except Exception:
-                    preview_path = None
+                # Fast preview: try lossless copy clip (very fast) - optional
+                preview_path = None
+                if ffmpeg_helpers is not None:
+                    try:
+                        preview_path = tempfile.mktemp(suffix=f"_preview_{i+1}.mp4")
+                        ffmpeg_helpers.fast_clip_copy(video_path, start, end - start, preview_path)
+                    except Exception:
+                        preview_path = None
 
                 # Produce final clip. If subtitles/burn-in requested, we re-encode using MoviePy
                 try:

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status, BackgroundTasks, Request
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, validator
@@ -12,10 +12,20 @@ import shutil
 import uuid
 import asyncio
 from dotenv import load_dotenv
+
+load_dotenv()
+
+# Configure logging FIRST before any imports that might use it
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 from gemini_processor import GeminiVideoProcessor
 from storage import init_storage, get_storage
 from database import init_database, get_db, is_database_enabled, User as DBUser, Video as DBVideo, Job as DBJob, Clip as DBClip
-import logging
 
 # Optional queueing imports will be attempted later (lazy)
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -38,14 +48,15 @@ except ImportError:
     YOUTUBE_AVAILABLE = False
     logger.warning("YouTube integration not available")
 
-load_dotenv()
+# Import admin router
+try:
+    from admin import router as admin_router
+    ADMIN_AVAILABLE = True
+except ImportError:
+    ADMIN_AVAILABLE = False
+    logger.warning("Admin module not available")
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Logging already configured above
 
 # Rate limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -70,7 +81,11 @@ if YOUTUBE_AVAILABLE:
     app.include_router(youtube_router)
     logger.info("✓ YouTube integration enabled")
 
-# CORS configuration
+# Include admin router
+if ADMIN_AVAILABLE:
+    app.include_router(admin_router)
+    logger.info("✓ Admin endpoints enabled")
+
 # CORS configuration
 # Allow localhost dev ports by default; can opt-in to allow all origins with CORS_ALLOW_ALL env var
 CORS_ALLOW_ALL = os.getenv("CORS_ALLOW_ALL", "false").lower() in ("1", "true", "yes")
@@ -99,10 +114,12 @@ from auth import get_current_user, create_access_token, oauth2_scheme, SECRET_KE
 # Security
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # Option to disable auth for local testing (set to 'true' in backend/.env)
-DISABLE_AUTH = os.getenv("DISABLE_AUTH", "true").lower() in ("1", "true", "yes")
+# DEFAULT IS NOW FALSE - auth is enabled by default for production safety
+DISABLE_AUTH = os.getenv("DISABLE_AUTH", "false").lower() in ("1", "true", "yes")
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# Configure bcrypt with truncate_error=False to handle long passwords gracefully
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__truncate_error=False)
+# oauth2_scheme is imported from auth module - don't redefine here
 
 # Gemini API Key (using Flash Lite - 133x cheaper than GPT-4!)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -502,12 +519,32 @@ async def register(user: UserCreate, password: str):
             if existing_user:
                 raise HTTPException(status_code=400, detail="Email already registered")
             
-            # Create new user
+            # Generate verification token
+            import secrets
+            verification_token = secrets.token_urlsafe(32)
+            
+            # Create new user with free credits
             hashed_password = get_password_hash(password)
-            db_user = DBUser(email=user.email, hashed_password=hashed_password, disabled=False)
+            db_user = DBUser(
+                email=user.email,
+                hashed_password=hashed_password,
+                disabled=False,
+                credits=3,  # Free credits for new users
+                email_verified=False,
+                verification_token=verification_token,
+                verification_token_expires=datetime.utcnow() + timedelta(hours=24)
+            )
             db.add(db_user)
             db.commit()
             db.refresh(db_user)
+            
+            # Send verification email
+            try:
+                from email_service import send_verification_email
+                send_verification_email(db_user.email, verification_token)
+            except Exception as e:
+                logger.warning(f"Failed to send verification email: {e}")
+            
             return User(email=db_user.email)
         finally:
             db.close()
@@ -520,7 +557,8 @@ async def register(user: UserCreate, password: str):
         users_db[user.email] = {
             "email": user.email,
             "hashed_password": hashed_password,
-            "disabled": False
+            "disabled": False,
+            "credits": 999  # Unlimited for dev mode
         }
         return User(email=user.email)
 
@@ -832,6 +870,7 @@ async def process_video_task(job_id: str, request: VideoProcessRequest, user_ema
                     logger.warning(f"Failed to upload captions for job {job_id}: {e}")
             
             # Update job status
+            num_clips_generated = len(result.get("clips", []))
             if db:
                 job.status = "completed"
                 job.progress = 100
@@ -846,7 +885,14 @@ async def process_video_task(job_id: str, request: VideoProcessRequest, user_ema
                 jobs_db[job_id]["result"] = result
                 jobs_db[job_id]["updated_at"] = datetime.utcnow().isoformat()
             
-            logger.info(f"Job {job_id} completed successfully")
+            logger.info(f"Job {job_id} completed successfully with {num_clips_generated} clips")
+            
+            # Send email notification
+            try:
+                from email_service import send_job_complete_email
+                send_job_complete_email(user_email, job_id, num_clips_generated)
+            except Exception as e:
+                logger.warning(f"Failed to send job complete email: {e}")
         else:
             raise Exception(result.get("error", "Processing failed"))
         
@@ -897,6 +943,32 @@ async def process_video(
         # Service-level check: if Gemini processor is required but not configured, return 503
         if REQUIRE_GEMINI and not video_processor:
             raise HTTPException(status_code=503, detail="Video processing backend unavailable: GEMINI_API_KEY not configured")
+
+        # Check credits (skip in dev mode)
+        if is_database_enabled():
+            db = get_db()
+            try:
+                user = db.query(DBUser).filter(DBUser.email == current_user["email"]).first()
+                if user:
+                    if (user.credits or 0) < 1:
+                        raise HTTPException(
+                            status_code=402,
+                            detail="Insufficient credits. Please purchase more credits to continue."
+                        )
+                    # Deduct credit
+                    user.credits = (user.credits or 0) - 1
+                    db.commit()
+                    logger.info(f"Deducted 1 credit from {user.email}, remaining: {user.credits}")
+                    
+                    # Send low credits warning if needed
+                    if user.credits <= 1:
+                        try:
+                            from email_service import send_low_credits_email
+                            send_low_credits_email(user.email, user.credits)
+                        except Exception as e:
+                            logger.warning(f"Failed to send low credits email: {e}")
+            finally:
+                db.close()
 
         # Validate request
         if process_request.video_source == "upload" and not process_request.video_id:
@@ -1159,7 +1231,7 @@ async def admin_failed_jobs():
 
 @app.get("/clips/{clip_id}/download")
 async def download_clip(
-    clip_id: str,
+    clip_id: int,
     current_user: dict = Depends(get_current_user)
 ):
     try:
@@ -1169,7 +1241,7 @@ async def download_clip(
             db = get_db()
             try:
                 # Find clip by ID
-                clip = db.query(DBClip).filter(DBClip.id == int(clip_id)).first()
+                clip = db.query(DBClip).filter(DBClip.id == clip_id).first()
                 if not clip:
                     raise HTTPException(status_code=404, detail="Clip not found")
                 
@@ -1202,9 +1274,9 @@ async def download_clip(
             clip_path = None
             for job in jobs_db.values():
                 if job["user"] == current_user["email"] and job["result"]:
-                    for clip in job["result"].get("clips", []):
-                        if str(clip.get("clip_number")) == clip_id:
-                            clip_path = clip.get("path")
+                    for clip_data in job["result"].get("clips", []):
+                        if clip_data.get("clip_number") == clip_id:
+                            clip_path = clip_data.get("path")
                             break
             
             if not clip_path or not os.path.exists(clip_path):
@@ -1505,10 +1577,234 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "video_processor": "ready" if video_processor else "not configured",
         "ai_model": "Gemini 2.5 Flash Lite" if video_processor else "none",
-    "stt_engine": STT_ENGINE,
+        "stt_engine": STT_ENGINE,
         "database": "connected" if is_database_enabled() else "not configured",
         "storage": "connected" if (storage and storage.enabled) else "not configured"
     }
+
+
+# ============================================================================
+# EMAIL VERIFICATION & PASSWORD RESET
+# ============================================================================
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+@app.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset email"""
+    if not is_database_enabled():
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(DBUser.email == request.email).first()
+        if not user:
+            # Don't reveal if email exists
+            return {"message": "If that email exists, a reset link has been sent"}
+        
+        # Generate reset token
+        import secrets
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        db.commit()
+        
+        # Send email
+        try:
+            from email_service import send_password_reset_email
+            send_password_reset_email(user.email, token)
+        except Exception as e:
+            logger.warning(f"Failed to send reset email: {e}")
+        
+        return {"message": "If that email exists, a reset link has been sent"}
+    finally:
+        db.close()
+
+
+@app.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password with token"""
+    if not is_database_enabled():
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(
+            DBUser.reset_token == request.token,
+            DBUser.reset_token_expires > datetime.utcnow()
+        ).first()
+        
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+        
+        # Update password
+        user.hashed_password = get_password_hash(request.new_password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.commit()
+        
+        return {"message": "Password reset successfully"}
+    finally:
+        db.close()
+
+
+@app.post("/auth/verify-email")
+async def verify_email(request: VerifyEmailRequest):
+    """Verify email with token"""
+    if not is_database_enabled():
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(
+            DBUser.verification_token == request.token,
+            DBUser.verification_token_expires > datetime.utcnow()
+        ).first()
+        
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+        
+        user.email_verified = True
+        user.verification_token = None
+        user.verification_token_expires = None
+        db.commit()
+        
+        # Send welcome email
+        try:
+            from email_service import send_welcome_email
+            send_welcome_email(user.email, user.credits or 3)
+        except Exception as e:
+            logger.warning(f"Failed to send welcome email: {e}")
+        
+        return {"message": "Email verified successfully"}
+    finally:
+        db.close()
+
+
+@app.post("/auth/resend-verification")
+async def resend_verification(current_user: dict = Depends(get_current_user)):
+    """Resend verification email"""
+    if not is_database_enabled():
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(DBUser.email == current_user["email"]).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.email_verified:
+            return {"message": "Email already verified"}
+        
+        # Generate new token
+        import secrets
+        token = secrets.token_urlsafe(32)
+        user.verification_token = token
+        user.verification_token_expires = datetime.utcnow() + timedelta(hours=24)
+        db.commit()
+        
+        # Send email
+        try:
+            from email_service import send_verification_email
+            send_verification_email(user.email, token)
+        except Exception as e:
+            logger.warning(f"Failed to send verification email: {e}")
+        
+        return {"message": "Verification email sent"}
+    finally:
+        db.close()
+
+
+# ============================================================================
+# CREDITS SYSTEM
+# ============================================================================
+
+@app.get("/user/credits")
+async def get_user_credits(current_user: dict = Depends(get_current_user)):
+    """Get current user's credit balance"""
+    if not is_database_enabled():
+        # In-memory mode: unlimited credits for dev
+        return {"credits": 999, "is_dev_mode": True}
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(DBUser.email == current_user["email"]).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "credits": user.credits or 0,
+            "lifetime_purchased": user.lifetime_credits_purchased or 0,
+            "tier": user.tier.value if user.tier else "bronze"
+        }
+    finally:
+        db.close()
+
+
+@app.get("/user/profile")
+async def get_user_profile(current_user: dict = Depends(get_current_user)):
+    """Get current user's full profile"""
+    if not is_database_enabled():
+        return {
+            "email": current_user["email"],
+            "credits": 999,
+            "email_verified": True,
+            "is_dev_mode": True
+        }
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(DBUser.email == current_user["email"]).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "id": user.id,
+            "email": user.email,
+            "credits": user.credits or 0,
+            "email_verified": user.email_verified or False,
+            "tier": user.tier.value if user.tier else "bronze",
+            "role": user.role.value if user.role else "both",
+            "total_clips": user.total_clips or 0,
+            "total_earnings": user.total_earnings or 0,
+            "total_views": user.total_views or 0,
+            "rating": user.rating or 5.0,
+            "display_name": user.display_name,
+            "bio": user.bio,
+            "is_admin": user.is_admin or False,
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        }
+    finally:
+        db.close()
+
+
+# ============================================================================
+# PRICING INFO (for frontend)
+# ============================================================================
+
+@app.get("/pricing")
+async def get_pricing():
+    """Get pricing information for credits"""
+    return {
+        "credit_cost_per_video": 1,
+        "free_credits_on_signup": 3,
+        "packages": [
+            {"credits": 10, "price": 9.99, "per_credit": 1.00, "popular": False},
+            {"credits": 25, "price": 19.99, "per_credit": 0.80, "popular": True},
+            {"credits": 50, "price": 34.99, "per_credit": 0.70, "popular": False},
+            {"credits": 100, "price": 59.99, "per_credit": 0.60, "popular": False},
+        ],
+        "note": "Each credit = 1 video processed (up to 10 clips)"
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

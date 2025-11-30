@@ -896,3 +896,67 @@
   cursor: not-allowed;
   transform: none;
 }
+
+
+/* Credits display in sidebar */
+.credits-display {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: var(--primary) !important;
+}
+
+.credits-display svg {
+  color: var(--primary);
+}
+
+/* Forgot password link */
+.forgot-password-link {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.forgot-password-link button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.forgot-password-link button:hover {
+  color: var(--primary);
+}
+
+/* Insufficient credits error */
+.credits-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.credits-error svg {
+  color: var(--error);
+  flex-shrink: 0;
+}
+
+.credits-error-content {
+  flex: 1;
+}
+
+.credits-error-content p {
+  margin: 0 0 0.5rem 0;
+  color: var(--error);
+  font-weight: 500;
+}
+
+.credits-error-content a {
+  color: var(--primary);
+  text-decoration: underline;
+}

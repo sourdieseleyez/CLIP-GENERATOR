@@ -15,7 +15,8 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-DISABLE_AUTH = os.getenv("DISABLE_AUTH", "true").lower() in ("1", "true", "yes")
+# DEFAULT IS NOW FALSE - auth is enabled by default for production safety
+DISABLE_AUTH = os.getenv("DISABLE_AUTH", "false").lower() in ("1", "true", "yes")
 DEV_USER_EMAIL = os.getenv("DEV_USER_EMAIL", "dev@localhost")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -36,13 +37,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
                     return {
                         "id": user.id,
                         "email": user.email,
-                        "disabled": user.disabled
+                        "disabled": user.disabled,
+                        "is_admin": getattr(user, 'is_admin', False) or False,
+                        "email_verified": True,
+                        "credits": getattr(user, 'credits', 999) or 999
                     }
             finally:
                 db.close()
         
-        # Fallback mock user for dev
-        return {"id": 1, "email": DEV_USER_EMAIL, "disabled": False}
+        # Fallback mock user for dev (unlimited credits, admin access)
+        return {
+            "id": 1,
+            "email": DEV_USER_EMAIL,
+            "disabled": False,
+            "is_admin": True,
+            "email_verified": True,
+            "credits": 999
+        }
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -66,9 +77,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             if user is None:
                 raise credentials_exception
             return {
-                "id": user.id,  # ✅ Include user ID
+                "id": user.id,
                 "email": user.email,
-                "disabled": user.disabled
+                "disabled": user.disabled,
+                "is_admin": getattr(user, 'is_admin', False) or False,
+                "email_verified": getattr(user, 'email_verified', True) or False,
+                "credits": getattr(user, 'credits', 0) or 0
             }
         finally:
             db.close()

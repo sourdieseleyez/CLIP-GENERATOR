@@ -17,12 +17,16 @@ try:
 except Exception:
     np = None
 
+# Try both relative and absolute imports for flexibility
 try:
-    from .ffmpeg_helpers import extract_audio_to_wav, compute_rms_windows
-except Exception:
-    # If ffmpeg_helpers isn't available, we'll provide graceful fallbacks.
-    extract_audio_to_wav = None
-    compute_rms_windows = None
+    from ffmpeg_helpers import extract_audio_to_wav, compute_rms_windows
+except ImportError:
+    try:
+        from .ffmpeg_helpers import extract_audio_to_wav, compute_rms_windows
+    except ImportError:
+        # If ffmpeg_helpers isn't available, we'll provide graceful fallbacks.
+        extract_audio_to_wav = None
+        compute_rms_windows = None
 
 try:
     # Optional: DeepFace for face emotion recognition

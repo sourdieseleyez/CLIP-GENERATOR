@@ -14,7 +14,10 @@ import {
   Settings,
   BarChart3,
   Library,
-  Briefcase
+  Briefcase,
+  CreditCard,
+  Shield,
+  Coins
 } from 'lucide-react';
 import './App.css';
 import { API_URL, UI_CONFIG, DISABLE_AUTH } from './config';
@@ -24,6 +27,9 @@ import ClipsLibrary from './ClipsLibrary';
 import Marketplace from './Marketplace';
 import CreateCampaign from './CreateCampaign';
 import SubmitJob from './SubmitJob';
+import Pricing from './Pricing';
+import AdminDashboard from './AdminDashboard';
+import { ForgotPassword, ResetPassword, VerifyEmail, VerificationBanner } from './AuthPages';
 
 function App() {
   // Check if we're in development mode
@@ -40,6 +46,11 @@ function App() {
   const [userEmail, setUserEmail] = useState('');
   const [authStatus, setAuthStatus] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
+  // User profile state
+  const [userProfile, setUserProfile] = useState(null);
+  const [userCredits, setUserCredits] = useState(null);
   
   // Video input state
   const [inputType, setInputType] = useState('upload');
@@ -76,7 +87,51 @@ function App() {
       setAuthMode('register');
       setShowAuthModal(true);
     }
+    
+    // Check URL for email verification or password reset
+    const urlParams = new URLSearchParams(window.location.search);
+    const verifyToken = urlParams.get('verify');
+    const resetToken = urlParams.get('reset');
+    
+    if (verifyToken) {
+      setCurrentPage('verify-email');
+    } else if (resetToken) {
+      setCurrentPage('reset-password');
+    }
   }, []);
+  
+  // Fetch user profile when logged in
+  useEffect(() => {
+    if (token && token !== 'dev-token') {
+      fetchUserProfile();
+    }
+  }, [token]);
+  
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch(`${API_URL}/user/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserProfile(data);
+        setUserCredits(data.credits);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+    }
+  };
+  
+  const handleResendVerification = async () => {
+    try {
+      await fetch(`${API_URL}/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (error) {
+      console.error('Failed to resend verification:', error);
+    }
+  };
 
   // Check if form is ready to submit
   const isFormReady = () => {
@@ -425,12 +480,37 @@ function App() {
                 <span>Generate Clips</span>
               </button>
               
+              <button 
+                className={`nav-item ${currentPage === 'pricing' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('pricing')}
+              >
+                <CreditCard size={18} />
+                <span>Get Credits</span>
+              </button>
+              
               <div className="nav-divider"></div>
+              
+              {/* Credits display */}
+              <div className="nav-item credits-display">
+                <Coins size={18} />
+                <span>{userCredits !== null ? `${userCredits} credits` : '...'}</span>
+              </div>
               
               <div className="nav-item user-item">
                 <User size={18} />
                 <span className="user-email-nav">{userEmail}</span>
               </div>
+              
+              {/* Admin link */}
+              {userProfile?.is_admin && (
+                <button 
+                  className={`nav-item ${currentPage === 'admin' ? 'active' : ''}`}
+                  onClick={() => setCurrentPage('admin')}
+                >
+                  <Shield size={18} />
+                  <span>Admin</span>
+                </button>
+              )}
               
               {isDev && (
                 <button className="nav-item dev-seed-btn" onClick={handleSeedData}>
@@ -534,6 +614,20 @@ function App() {
                   {loading ? 'Processing...' : authMode === 'login' ? 'Sign In' : 'Create Account'}
                 </button>
               </div>
+              
+              {authMode === 'login' && (
+                <div className="forgot-password-link">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setShowAuthModal(false);
+                      setCurrentPage('forgot-password');
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
 
               {authStatus && (
                 <div className={`status-message status-${authStatus.type}`}>
@@ -547,6 +641,38 @@ function App() {
 
       {/* Main Content */}
       <main className="main-content">
+        {/* Email verification banner */}
+        {token && userProfile && !userProfile.email_verified && !userProfile.is_dev_mode && (
+          <VerificationBanner 
+            email={userEmail} 
+            onResend={handleResendVerification}
+          />
+        )}
+        
+        {/* Auth pages (no sidebar needed) */}
+        {currentPage === 'verify-email' && (
+          <VerifyEmail token={new URLSearchParams(window.location.search).get('verify')} />
+        )}
+        
+        {currentPage === 'reset-password' && (
+          <ResetPassword 
+            token={new URLSearchParams(window.location.search).get('reset')}
+            onSuccess={() => {
+              window.history.replaceState({}, '', '/');
+              setCurrentPage('generate');
+              setShowAuthModal(true);
+              setAuthMode('login');
+            }}
+          />
+        )}
+        
+        {currentPage === 'forgot-password' && (
+          <ForgotPassword onBack={() => {
+            setCurrentPage('generate');
+            setShowAuthModal(true);
+          }} />
+        )}
+        
         {/* Render different pages based on currentPage */}
         {currentPage === 'dashboard' && token && (
           <Dashboard token={token} />
@@ -586,6 +712,14 @@ function App() {
         
         {currentPage === 'library' && token && (
           <ClipsLibrary token={token} />
+        )}
+        
+        {currentPage === 'pricing' && token && (
+          <Pricing token={token} />
+        )}
+        
+        {currentPage === 'admin' && token && userProfile?.is_admin && (
+          <AdminDashboard token={token} />
         )}
         
         {currentPage === 'generate' && (
