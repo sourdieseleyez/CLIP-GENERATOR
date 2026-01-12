@@ -1,130 +1,145 @@
-# ClipGen - AI-Powered Viral Clip Marketplace
+<p align="center">
+  <img src="frontend/public/logos/logo-full.svg" alt="ClipGen Logo" width="400"/>
+</p>
 
-**Turn any video into viral clips. Get paid.**
+<h1 align="center">🎬 ClipGen</h1>
 
-ClipGen is a two-sided marketplace where content creators and brands post campaigns, and skilled clippers use AI to generate viral short-form content. Clippers earn money based on performance with tiered revenue splits (70/30 to 85/15).
+<p align="center">
+  <strong>AI-Powered Viral Clip Marketplace</strong>
+</p>
+
+<p align="center">
+  <em>Turn any video into viral clips. Get paid. 💰</em>
+</p>
+
+<p align="center">
+  <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick%20Start-blue?style=for-the-badge" alt="Quick Start"/></a>
+  <a href="#-features"><img src="https://img.shields.io/badge/Features-green?style=for-the-badge" alt="Features"/></a>
+  <a href="#-deployment"><img src="https://img.shields.io/badge/Deploy-orange?style=for-the-badge" alt="Deploy"/></a>
+  <a href="#-documentation"><img src="https://img.shields.io/badge/Docs-purple?style=for-the-badge" alt="Docs"/></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React"/>
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
+  <img src="https://img.shields.io/badge/Gemini%20AI-8E75B2?style=flat-square&logo=google&logoColor=white" alt="Gemini"/>
+</p>
 
 ---
 
-## 🎯 Mission
+## 🌟 What is ClipGen?
 
-Democratize viral content creation by combining AI automation with human creativity. Enable anyone to earn money creating clips while helping creators and brands maximize their reach on TikTok, YouTube Shorts, and Instagram Reels.
+ClipGen is a **two-sided marketplace** where content creators and brands post campaigns, and skilled clippers use AI to generate viral short-form content. 
+
+> 🎯 **Mission:** Democratize viral content creation by combining AI automation with human creativity.
+
+### 💡 How It Works
+
+```
+📹 Upload Video  →  🤖 AI Analysis  →  ✂️ Generate Clips  →  📊 Track Performance  →  💵 Get Paid
+```
 
 ---
 
-## 🏗️ Architecture
+## ✨ Features
 
-### Tech Stack
+<table>
+<tr>
+<td width="50%">
 
-**Backend (Python)**
-- FastAPI - High-performance async API
-- PostgreSQL - Primary database (SQLAlchemy ORM)
-- Redis + RQ - Job queue for video processing
-- Gemini 2.5 Flash Lite - AI clip analysis (133x cheaper than GPT-4)
-- Whisper - Speech-to-text transcription
-- FFmpeg - Video processing and audio analysis
-- S3-compatible storage - Cloudflare R2, AWS S3, DigitalOcean Spaces
+### 🎬 For Clippers
+- ✅ AI-powered clip generation
+- ✅ Browse available campaigns
+- ✅ Tiered earnings (70-85% split)
+- ✅ Performance bonuses for viral clips
+- ✅ Auto-upload to YouTube
+- ✅ Portfolio & rating system
 
-**Frontend (React)**
-- React 18 + Vite - Fast development and builds
-- Lucide Icons - Clean, modern iconography
-- CSS Variables - Themeable design system
+</td>
+<td width="50%">
 
-**Integrations**
-- YouTube Data API v3 - Auto-upload with tracking
-- Stripe Connect (planned) - Automated payments
+### 🏢 For Clients
+- ✅ Post campaigns with requirements
+- ✅ Review and approve submissions
+- ✅ Track performance analytics
+- ✅ Pay per clip or bulk pricing
+- ✅ Quality ratings and feedback
 
-### System Architecture
+</td>
+</tr>
+</table>
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         Frontend (React)                     │
-│  Dashboard | Marketplace | Clip Generator | Analytics       │
-└────────────────────────┬────────────────────────────────────┘
-                         │ REST API
-┌────────────────────────┴────────────────────────────────────┐
-│                      Backend (FastAPI)                       │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │   Auth   │  │Marketplace│  │ YouTube  │  │  Video   │   │
-│  │  Module  │  │    API    │  │   API    │  │Processor │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-   ┌────▼─────┐    ┌────▼─────┐    ┌────▼─────┐
-   │PostgreSQL│    │  Redis   │    │    S3    │
-   │ Database │    │  Queue   │    │ Storage  │
-   └──────────┘    └──────────┘    └──────────┘
-```
+### 🤖 AI Processing Pipeline
 
-### Data Flow
-
-**Self-Service Flow:**
-```
-User → Upload Video → AI Processing → Generate Clips → Download
-```
-
-**Marketplace Flow:**
-```
-Client → Create Campaign → Post to Marketplace
-                              ↓
-Clipper → Browse → Claim Job → Generate Clips
-                              ↓
-Clipper → Submit → Upload to YouTube (auto-tracked)
-                              ↓
-Client → Review → Approve/Reject
-                              ↓
-Clipper → Request Payout → Receive Payment
-                              ↓
-Daily Cron → Sync Views → Calculate Bonuses
-```
+| Feature | Technology | Status |
+|---------|------------|--------|
+| 🎙️ Transcription | Whisper / Faster-Whisper | ✅ Ready |
+| 🔥 Viral Detection | Gemini 2.5 Flash Lite | ✅ Ready |
+| 🎵 Audio Analysis | FFmpeg | ✅ Ready |
+| 🎬 Scene Detection | OpenCV | ✅ Ready |
+| 😄 Emotion Detection | Custom ML | ✅ Ready |
+| 📝 Auto Subtitles | SRT/VTT Generator | ✅ Ready |
 
 ---
 
 ## 💰 Revenue Model
 
-### Tiered Revenue Splits
+### 🏆 Tiered Revenue Splits
 
 Clippers earn more as they prove their skills:
 
 | Tier | Split | Requirements |
-|------|-------|--------------|
-| 🥉 Bronze | 70/30 | New users (default) |
-| 🥈 Silver | 75/25 | 10+ approved clips OR 100k+ views |
-| 🥇 Gold | 80/20 | 50+ approved clips OR 500k+ views |
-| 💎 Platinum | 85/15 | 100+ approved clips OR 1M+ views |
+|:----:|:-----:|:-------------|
+| 🥉 **Bronze** | 70/30 | New users (default) |
+| 🥈 **Silver** | 75/25 | 10+ clips OR 100k+ views |
+| 🥇 **Gold** | 80/20 | 50+ clips OR 500k+ views |
+| 💎 **Platinum** | 85/15 | 100+ clips OR 1M+ views |
 
-### Performance Bonuses
+### 🚀 Performance Bonuses
 
-Viral clips earn automatic bonuses:
-- 100k views = 20% bonus
-- 500k views = 50% bonus
-- 1M views = 100% bonus
-- 5M views = 200% bonus
-
-### Platform Revenue Streams
-
-1. **Revenue Share** - 15-30% per clip (based on clipper tier)
-2. **Marketplace Fee** - 5-10% on campaign budgets (future)
-3. **Client Subscriptions** - Tiered plans (future)
-4. **Premium AI Tools** - Advanced features for clippers (future)
+| Views | Bonus |
+|:-----:|:-----:|
+| 100k | +20% 🔥 |
+| 500k | +50% 🔥🔥 |
+| 1M | +100% 🔥🔥🔥 |
+| 5M | +200% 💥 |
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 📋 Prerequisites
 
-- Python 3.10+
-- Node.js 18+
-- PostgreSQL (or use Neon.tech free tier)
-- FFmpeg installed
+```
+✅ Python 3.10+
+✅ Node.js 18+
+✅ FFmpeg installed
+✅ PostgreSQL (or Neon.tech free tier)
+```
 
-### Backend Setup
+### ⚡ One-Command Setup (Windows)
+
+```bash
+# Clone and run
+git clone https://github.com/sourdieseleyez/CLIP-GENERATOR.git
+cd CLIP-GENERATOR
+QUICK-START.bat
+```
+
+### 🔧 Manual Setup
+
+<details>
+<summary><strong>Backend Setup</strong></summary>
 
 ```bash
 cd backend
+
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Mac/Linux
 
 # Install dependencies
 pip install -r requirements.txt
@@ -137,7 +152,10 @@ cp .env.example .env
 python main.py
 ```
 
-### Frontend Setup
+</details>
+
+<details>
+<summary><strong>Frontend Setup</strong></summary>
 
 ```bash
 cd frontend
@@ -149,178 +167,178 @@ npm install
 npm run dev
 ```
 
-### Environment Variables
+</details>
 
-**Backend (.env):**
-```bash
-SECRET_KEY=<generate-with-secrets.token_urlsafe(32)>
-GEMINI_API_KEY=<from-google-ai-studio>
+### 🔑 Environment Variables
+
+<details>
+<summary><strong>Backend (.env)</strong></summary>
+
+```env
+# Required
+SECRET_KEY=your-secret-key-here
+GEMINI_API_KEY=your-gemini-api-key
+
+# Database
 DATABASE_URL=postgresql://user:pass@host:5432/dbname
-DISABLE_AUTH=false  # true for local dev only
 
-# Optional
-STORAGE_BUCKET=<s3-bucket-name>
-STORAGE_ACCESS_KEY=<aws-access-key>
-STORAGE_SECRET_KEY=<aws-secret-key>
+# Storage (Optional)
+STORAGE_BUCKET=your-bucket
+STORAGE_ACCESS_KEY=your-key
+STORAGE_SECRET_KEY=your-secret
 ```
 
-**Frontend (.env):**
-```bash
-VITE_API_URL=http://localhost:8000
+</details>
+
+---
+
+## 🏗️ Architecture
+
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                    🖥️ Frontend (React)                       │
+│     Dashboard │ Marketplace │ Generator │ Analytics         │
+└────────────────────────┬────────────────────────────────────┘
+                         │ REST API
+┌────────────────────────┴────────────────────────────────────┐
+│                    ⚡ Backend (FastAPI)                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  🔐 Auth │  │🏪 Market │  │📺 YouTube│  │🎬 Video  │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+   ┌────▼─────┐    ┌────▼─────┐    ┌────▼─────┐
+   │🐘 Postgres│    │⚡ Redis  │    │☁️ S3     │
+   │ Database │    │  Queue   │    │ Storage  │
+   └──────────┘    └──────────┘    └──────────┘
+```
+
+### 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 18, Vite, Lucide Icons |
+| **Backend** | FastAPI, Python 3.10+ |
+| **Database** | PostgreSQL, SQLAlchemy |
+| **AI** | Gemini 2.5 Flash Lite, Whisper |
+| **Queue** | Redis + RQ |
+| **Storage** | S3 / Cloudflare R2 |
+| **Video** | FFmpeg |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-CLIP-GENERATOR/
-├── backend/
-│   ├── main.py                 # FastAPI app, core routes
-│   ├── auth.py                 # Authentication module
-│   ├── database.py             # SQLAlchemy models
-│   ├── marketplace.py          # Marketplace API
-│   ├── youtube_integration.py  # YouTube upload & tracking
-│   ├── gemini_processor.py     # AI clip generation
-│   ├── storage.py              # S3 storage handler
-│   ├── ffmpeg_helpers.py       # Audio analysis
-│   ├── scene_detection.py      # Camera cut detection
-│   ├── emotion_detector.py     # Hype moment detection
-│   ├── subtitles.py            # SRT/VTT generation
-│   └── cron_sync_views.py      # Daily view sync job
+📦 CLIP-GENERATOR
+├── 🐍 backend/
+│   ├── main.py              # FastAPI app
+│   ├── auth.py              # JWT authentication
+│   ├── database.py          # SQLAlchemy models
+│   ├── marketplace.py       # Marketplace API
+│   ├── gemini_processor.py  # AI clip generation
+│   ├── youtube_integration.py
+│   └── storage.py           # S3 handler
 │
-├── frontend/
+├── ⚛️ frontend/
 │   └── src/
-│       ├── App.jsx             # Main app with routing
-│       ├── Dashboard.jsx       # Analytics dashboard
-│       ├── Marketplace.jsx     # Browse campaigns
-│       ├── CreateCampaign.jsx  # Campaign creation
-│       ├── SubmitJob.jsx       # Job submission
-│       └── ClipsLibrary.jsx    # Clip history
+│       ├── App.jsx          # Main router
+│       ├── Dashboard.jsx    # Analytics
+│       ├── Marketplace.jsx  # Browse jobs
+│       ├── ClipsLibrary.jsx # Clip history
+│       └── ...
 │
-└── README.md
-```
-
----
-
-## 🔑 Key Features
-
-### For Clippers
-- ✅ AI-powered clip generation (Gemini + Whisper)
-- ✅ Browse available campaigns
-- ✅ Tiered earnings (70-85% revenue share)
-- ✅ Performance bonuses for viral clips
-- ✅ Auto-upload to YouTube with tracking
-- ✅ Portfolio and rating system
-
-### For Clients
-- ✅ Post campaigns with requirements
-- ✅ Review and approve submissions
-- ✅ Track performance analytics
-- ✅ Pay per clip or bulk pricing
-- ✅ Quality ratings and feedback
-
-### AI Processing
-- ✅ Automatic transcription (Whisper)
-- ✅ Viral moment detection (Gemini 2.5)
-- ✅ Audio energy analysis
-- ✅ Scene change detection
-- ✅ Emotion/hype detection
-- ✅ Auto-generated subtitles (SRT/VTT)
-
----
-
-## 🧪 Testing
-
-```bash
-# Backend tests (coming soon)
-cd backend
-pytest
-
-# Frontend tests (coming soon)
-cd frontend
-npm test
-```
-
----
-
-## 📊 Database Schema
-
-### Core Tables
-- `users` - User accounts with marketplace roles
-- `campaigns` - Client job postings
-- `marketplace_jobs` - Job assignments and tracking
-- `clips` - Generated clips with performance data
-- `payouts` - Payment tracking
-
-### Relationships
-```
-users (1) ──→ (N) campaigns (client posts jobs)
-users (1) ──→ (N) marketplace_jobs (clipper claims jobs)
-campaigns (1) ──→ (N) marketplace_jobs
-marketplace_jobs (1) ──→ (1) clips
-users (1) ──→ (N) payouts
+├── 🐳 Dockerfile
+├── 🚀 fly.toml
+└── 📖 README.md
 ```
 
 ---
 
 ## 🔐 Security
 
-- JWT token authentication
-- Bcrypt password hashing
-- Rate limiting on all endpoints
-- CORS configuration
-- Input validation with Pydantic
-- SQL injection protection (SQLAlchemy ORM)
+| Feature | Implementation |
+|---------|----------------|
+| 🔑 Authentication | JWT tokens with expiration |
+| 🔒 Passwords | Bcrypt hashing |
+| 🚦 Rate Limiting | slowapi on all endpoints |
+| 🌐 CORS | Configurable origins |
+| ✅ Validation | Pydantic models |
+| 🛡️ SQL Injection | SQLAlchemy ORM |
 
 ---
 
 ## 🚢 Deployment
 
-### Recommended Stack
-- **Backend:** Railway or Render
-- **Frontend:** Vercel or Netlify
-- **Database:** Neon.tech (PostgreSQL)
-- **Storage:** Cloudflare R2 or AWS S3
-- **Queue:** Upstash Redis
+### ☁️ Recommended Stack
 
-### Deploy Checklist
-1. Set up PostgreSQL database
-2. Configure environment variables
-3. Deploy backend API
-4. Deploy frontend app
-5. Set up cron job for view sync
-6. Configure YouTube OAuth (optional)
+| Service | Provider | Cost |
+|---------|----------|------|
+| **Backend** | Railway / Render | ~$15/mo |
+| **Frontend** | Vercel / Netlify | Free |
+| **Database** | Neon.tech | Free tier |
+| **Storage** | Cloudflare R2 | Free tier |
+| **Queue** | Upstash Redis | Free tier |
+
+### 💵 Cost Estimate
+
+| Scale | Monthly Cost |
+|-------|--------------|
+| 🧪 Development | **$0** |
+| 🚀 100 videos/mo | **~$10** |
+| 📈 1000 videos/mo | **~$75** |
+| 🏢 10000 videos/mo | **~$750** |
 
 ---
 
 ## 📈 Roadmap
 
-### MVP (Current)
+### ✅ MVP (Current)
 - [x] AI clip generation
 - [x] Marketplace system
 - [x] YouTube integration
 - [x] Tiered revenue splits
 - [x] Performance bonuses
+- [x] OAuth (Google, GitHub)
 
-### v2.0
+### 🔜 v2.0
 - [ ] Stripe Connect payments
 - [ ] Email notifications
 - [ ] Advanced analytics
-- [ ] Multi-platform support (TikTok, Instagram)
+- [ ] TikTok/Instagram upload
 - [ ] Referral system
 
-### v3.0
+### 🔮 v3.0
 - [ ] White-label for agencies
 - [ ] Team accounts
-- [ ] API for integrations
+- [ ] Public API
 - [ ] Mobile apps
+
+---
+
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [🚀 Quick Start](QUICK-START-DEV.txt) | Get running in 5 minutes |
+| [⚙️ Production Setup](PRODUCTION-SETUP.md) | Deploy to production |
+| [🐳 Docker Deploy](FLY-DEPLOYMENT.md) | Fly.io deployment |
+| [📊 Features](FEATURES-SUMMARY.md) | Full feature list |
+| [🗺️ Roadmap](MVP-ROADMAP.md) | Development roadmap |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Please read our contributing guidelines first.
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
@@ -332,10 +350,20 @@ Proprietary - All rights reserved
 
 ## 🆘 Support
 
-For issues or questions:
-- Create an issue on GitHub
-- Email: support@clipgen.ai (placeholder)
+- 📧 Email: support@clipgen.ai
+- 🐛 Issues: [GitHub Issues](https://github.com/sourdieseleyez/CLIP-GENERATOR/issues)
+- 💬 Discord: Coming soon
 
 ---
 
-**Built with ❤️ using AI and human creativity**
+<p align="center">
+  <strong>Built with ❤️ using AI and human creativity</strong>
+</p>
+
+<p align="center">
+  <img src="frontend/public/logos/logo-mark.svg" alt="ClipGen" width="50"/>
+</p>
+
+<p align="center">
+  <sub>© 2025 ClipGen. All rights reserved.</sub>
+</p>
