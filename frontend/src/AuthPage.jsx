@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, User, ArrowRight, Video, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Video, Eye, EyeOff } from 'lucide-react';
 import { API_URL } from './config';
 import './AuthPage.css';
 
@@ -123,15 +123,15 @@ function AuthPage({ onAuthSuccess, initialMode = 'login', onNavigate }) {
           <p>AI-powered clip generation for creators, streamers, and marketers.</p>
           <div className="auth-features">
             <div className="auth-feature">
-              <Sparkles size={18} />
+              <span className="bullet-point"></span>
               <span>AI-Powered Analysis</span>
             </div>
             <div className="auth-feature">
-              <Sparkles size={18} />
+              <span className="bullet-point"></span>
               <span>Auto-Generated Captions</span>
             </div>
             <div className="auth-feature">
-              <Sparkles size={18} />
+              <span className="bullet-point"></span>
               <span>Multi-Platform Export</span>
             </div>
           </div>

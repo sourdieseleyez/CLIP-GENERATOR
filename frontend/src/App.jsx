@@ -30,6 +30,7 @@ import SubmitJob from './SubmitJob';
 import Pricing from './Pricing';
 import AdminDashboard from './AdminDashboard';
 import { ForgotPassword, ResetPassword, VerifyEmail, VerificationBanner } from './AuthPages';
+import AuthPage from './AuthPage';
 import LandingPage from './LandingPage';
 import TermsOfService from './TermsOfService';
 import PrivacyPolicy from './PrivacyPolicy';
@@ -50,7 +51,6 @@ function App() {
   const [token, setToken] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [authStatus, setAuthStatus] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   
   // User profile state
@@ -90,7 +90,7 @@ function App() {
       sessionStorage.removeItem('signupEmail');
       setEmail(signupEmail);
       setAuthMode('register');
-      setShowAuthModal(true);
+      setCurrentPage('auth');
     }
     
     // Check URL for email verification or password reset
@@ -202,12 +202,6 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const openAuthModal = (mode) => {
-    setAuthMode(mode);
-    setShowAuthModal(true);
-    setAuthStatus(null);
   };
 
   const handleLogout = () => {
@@ -440,15 +434,26 @@ function App() {
 
   // Handle "Get Started" from landing page
   const handleGetStarted = () => {
-    setCurrentPage('generate');
-    setShowAuthModal(true);
+    setCurrentPage('auth');
     setAuthMode('register');
   };
 
-  // Render landing page and related pages (terms, privacy, contact, docs)
-  if (currentPage === 'landing' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'contact' || currentPage === 'docs') {
+  // Render landing page and related pages (terms, privacy, contact, docs, auth)
+  if (currentPage === 'landing' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'contact' || currentPage === 'docs' || currentPage === 'auth') {
     if (currentPage === 'landing') {
       return <LandingPage onGetStarted={handleGetStarted} onNavigate={handleLandingNavigate} />;
+    }
+    if (currentPage === 'auth') {
+      return (
+        <AuthPage 
+          onAuthSuccess={(accessToken, userEmailAddr) => {
+            setToken(accessToken);
+            setUserEmail(userEmailAddr);
+            setCurrentPage('dashboard');
+          }}
+          initialMode={authMode}
+        />
+      );
     }
     if (currentPage === 'terms') {
       return <TermsOfService onBack={() => setCurrentPage('landing')} />;
@@ -570,11 +575,11 @@ function App() {
                 <span>Home</span>
               </button>
               
-              <button className="nav-item" onClick={() => openAuthModal('login')}>
+              <button className="nav-item" onClick={() => { setAuthMode('login'); setCurrentPage('auth'); }}>
                 <User size={18} />
                 <span>Login</span>
               </button>
-              <button className="nav-item" onClick={() => openAuthModal('register')}>
+              <button className="nav-item" onClick={() => { setAuthMode('register'); setCurrentPage('auth'); }}>
                 <UserPlus size={18} />
                 <span>Sign Up</span>
               </button>
@@ -592,88 +597,6 @@ function App() {
           )}
         </nav>
       </aside>
-
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{authMode === 'login' ? 'Login' : 'Create Account'}</h2>
-              <button className="modal-close" onClick={() => setShowAuthModal(false)}>×</button>
-            </div>
-
-            <div className="auth-form">
-              <div className="auth-toggle">
-                <button
-                  className={authMode === 'login' ? 'active' : ''}
-                  onClick={() => setAuthMode('login')}
-                >
-                  Login
-                </button>
-                <button
-                  className={authMode === 'register' ? 'active' : ''}
-                  onClick={() => setAuthMode('register')}
-                >
-                  Register
-                </button>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="password">Password</label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  maxLength={64}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="form-actions">
-                <button onClick={handleAuth} disabled={loading}>
-                  {loading ? 'Processing...' : authMode === 'login' ? 'Sign In' : 'Create Account'}
-                </button>
-              </div>
-              
-              {authMode === 'login' && (
-                <div className="forgot-password-link">
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setShowAuthModal(false);
-                      setCurrentPage('forgot-password');
-                    }}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              )}
-
-              {authStatus && (
-                <div className={`status-message status-${authStatus.type}`}>
-                  {authStatus.message}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
       <main className="main-content">
@@ -695,17 +618,16 @@ function App() {
             token={new URLSearchParams(window.location.search).get('reset')}
             onSuccess={() => {
               window.history.replaceState({}, '', '/');
-              setCurrentPage('generate');
-              setShowAuthModal(true);
               setAuthMode('login');
+              setCurrentPage('auth');
             }}
           />
         )}
         
         {currentPage === 'forgot-password' && (
           <ForgotPassword onBack={() => {
-            setCurrentPage('generate');
-            setShowAuthModal(true);
+            setAuthMode('login');
+            setCurrentPage('auth');
           }} />
         )}
         

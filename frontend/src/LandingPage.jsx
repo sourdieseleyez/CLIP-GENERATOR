@@ -63,37 +63,50 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 md:pt-44 md:pb-28 container mx-auto px-6 md:px-12 lg:px-20 z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="max-w-5xl"
-        >
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-heading text-white mb-6 leading-tight text-left">
-            Your Stream Highlights, Clipped & Posted{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyber-blue to-chrome drop-shadow-[0_0_15px_rgba(230,0,18,0.5)]">
-              While You Sleep
-            </span>
-          </h1>
-
-          <p className="text-lg md:text-xl lg:text-2xl text-light-text/80 max-w-4xl mb-10 font-light text-left leading-relaxed">
-            Ditch the 3am editing grind. Our AI watches your streams, spots the bangers, adds captions, and drops them straight to TikTok & Shorts — all on autopilot.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-5 items-start">
-            <button
-              onClick={onGetStarted}
-              className="group relative px-8 py-4 bg-cyber-blue text-night-sky font-bold text-lg rounded-xl hover:bg-white transition-all shadow-cyber-glow overflow-hidden"
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                Start Clipping Free <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+        <div className="flex flex-col lg:flex-row items-center gap-12">
+          {/* Text Content */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-5xl lg:w-2/3"
+          >
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-heading text-white mb-6 leading-tight text-left">
+              Your Stream Highlights, Clipped & Posted{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyber-blue to-chrome drop-shadow-[0_0_15px_rgba(230,0,18,0.5)]">
+                While You Sleep
               </span>
-            </button>
-            <a href="#demo" className="flex items-center gap-2 text-white hover:text-cyber-blue transition-colors py-4">
-              <Play size={20} className="fill-current" /> Watch Demo
-            </a>
-          </div>
-        </motion.div>
+            </h1>
+
+            <p className="text-lg md:text-xl lg:text-2xl text-light-text/80 max-w-4xl mb-10 font-light text-left leading-relaxed">
+              Ditch the 3am editing grind. Our AI watches your streams, spots the bangers, adds captions, and drops them straight to TikTok & Shorts — all on autopilot.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-5 items-start">
+              <button
+                onClick={onGetStarted}
+                className="group relative px-8 py-4 bg-cyber-blue text-night-sky font-bold text-lg rounded-xl hover:bg-white transition-all shadow-cyber-glow overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  Start Clipping Free <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                </span>
+              </button>
+              <a href="#demo" className="flex items-center gap-2 text-white hover:text-cyber-blue transition-colors py-4">
+                <Play size={20} className="fill-current" /> Watch Demo
+              </a>
+            </div>
+          </motion.div>
+
+          {/* Hero Logo */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.2 }}
+            className="hidden lg:block lg:w-1/3"
+          >
+            <img src="/hero-logo.png" alt="ClipGen 3D Logo" className="w-full max-w-[400px] h-auto drop-shadow-2xl animate-pulse-glow rounded-[2rem] border border-white/10 shadow-cyber-glow/20" />
+          </motion.div>
+        </div>
       </section>
 
       {/* Rich Features Section */}
@@ -136,7 +149,7 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
             >
               <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-cyber-blue/20 border border-white/10 group">
                 <div className="absolute inset-0 bg-cyber-blue/10 opacity-0 group-hover:opacity-100 transition-opacity z-10"></div>
-                <img src="/smart-detection.png" alt="Smart Detection Interface" className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700" />
+                <img src="/smart-detection-streamer.png" alt="Smart Detection Streamer" className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700" />
               </div>
             </motion.div>
           </div>
