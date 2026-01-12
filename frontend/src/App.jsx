@@ -452,6 +452,7 @@ function App() {
             setCurrentPage('dashboard');
           }}
           initialMode={authMode}
+          onNavigate={handleLandingNavigate}
         />
       );
     }
