@@ -41,6 +41,11 @@
   opacity: 0.8;
 }
 
+.brand-logo {
+  height: 32px;
+  width: auto;
+}
+
 .brand-icon {
   color: #E60012;
 }

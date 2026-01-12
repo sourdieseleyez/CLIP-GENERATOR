@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Video, ChevronRight, ArrowLeft } from 'lucide-react';
+import { ChevronRight, ArrowLeft } from 'lucide-react';
 import './DocLayout.css';
 
 const DocLayout = ({ title, sections, children, onBack }) => {
@@ -68,9 +68,8 @@ const DocLayout = ({ title, sections, children, onBack }) => {
       {/* Header */}
       <header className="doc-header">
         <div className="doc-header-content">
-          <div className="doc-brand" onClick={onBack}>
-            <Video className="brand-icon" />
-            <span>Clip<span className="brand-accent">Gen</span></span>
+          <div className="doc-brand" onClick={onBack} style={{ cursor: 'pointer' }}>
+            <img src="/logos/logo-full.svg" alt="ClipGen" className="brand-logo" />
           </div>
           <button className="back-btn" onClick={onBack}>
             <ArrowLeft size={18} />
