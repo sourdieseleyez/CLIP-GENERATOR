@@ -149,7 +149,7 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
             >
               <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-cyber-blue/20 border border-white/10 group">
                 <div className="absolute inset-0 bg-cyber-blue/10 opacity-0 group-hover:opacity-100 transition-opacity z-10"></div>
-                <img src="/smart-detection-streamer.png" alt="Smart Detection Streamer" className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700" />
+                <img src="/smart-detection-generic.png" alt="Smart Detection Streamer" className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700" />
               </div>
             </motion.div>
           </div>

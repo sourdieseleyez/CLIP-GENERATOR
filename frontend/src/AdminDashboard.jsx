@@ -89,13 +89,11 @@ function AdminDashboard({ token }) {
 
   const handleUpdatePayout = async (payoutId, status) => {
     try {
-      const response = await fetch(`${API_URL}/admin/payouts/${payoutId}`, {
+      const response = await fetch(`${API_URL}/admin/payouts/${payoutId}?status=${status}`, {
         method: 'PATCH',
         headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status })
+          'Authorization': `Bearer ${token}`
+        }
       });
       
       if (response.ok) {

@@ -316,8 +316,11 @@ td {
 .status-badge {
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.8rem;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: capitalize;
+  letter-spacing: 0.02em;
 }
 
 .status-badge.pending {
@@ -342,14 +345,17 @@ td {
 
 .action-btn {
   padding: 0.375rem 0.75rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   background: var(--bg-tertiary);
   color: var(--text-primary);
   cursor: pointer;
+  font-family: var(--font-heading);
   font-size: 0.8rem;
+  font-weight: 600;
   margin-right: 0.5rem;
   transition: all 0.2s;
+  letter-spacing: 0.02em;
 }
 
 .action-btn:hover {
@@ -378,6 +384,8 @@ td {
 .empty-state {
   text-align: center;
   padding: 2rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
   color: var(--text-secondary);
 }
 
@@ -396,15 +404,20 @@ td {
 
 .overview-card h3 {
   margin: 0 0 0.5rem 0;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text-secondary);
-  font-size: 0.9rem;
-  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .big-number {
+  font-family: var(--font-display);
   font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-weight: 800;
+  color: var(--accent-primary);
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 768px) {
