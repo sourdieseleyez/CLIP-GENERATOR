@@ -1,0 +1,46 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="red-gradient" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" stop-color="#FF2D2D"/>
+      <stop offset="50%" stop-color="#E60012"/>
+      <stop offset="100%" stop-color="#8B0000"/>
+    </linearGradient>
+    <linearGradient id="chrome-gradient" x1="0" y1="0" x2="0" y2="512">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#C0C0C0"/>
+      <stop offset="100%" stop-color="#808080"/>
+    </linearGradient>
+    <filter id="red-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feFlood flood-color="#E60012" flood-opacity="0.6"/>
+      <feComposite in2="blur" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="angular-clip">
+      <polygon points="50,0 512,0 512,462 462,512 0,512 0,50"/>
+    </clipPath>
+  </defs>
+  
+  <!-- Angular container with cut corner -->
+  <polygon points="50,0 512,0 512,462 462,512 0,512 0,50" fill="#0a0a0a"/>
+  <polygon points="50,0 512,0 512,462 462,512 0,512 0,50" fill="none" stroke="#1a1a1a" stroke-width="8"/>
+  
+  <!-- Outer red border glow -->
+  <polygon points="50,0 512,0 512,462 462,512 0,512 0,50" fill="none" stroke="#E60012" stroke-width="3" filter="url(#red-glow)"/>
+  
+  <!-- Aggressive angular "C" letterform -->
+  <g filter="url(#red-glow)">
+    <path d="M400,100 L160,100 L100,160 L100,352 L160,412 L400,412 L400,340 L190,340 L160,310 L160,202 L190,172 L400,172 Z" fill="url(#red-gradient)"/>
+  </g>
+  
+  <!-- Chrome speed lines / tech accents -->
+  <polygon points="440,60 470,60 380,452 350,452" fill="url(#chrome-gradient)" opacity="0.7"/>
+  <polygon points="480,120 500,120 420,452 400,452" fill="url(#chrome-gradient)" opacity="0.4"/>
+  
+  <!-- Inner tech detail lines -->
+  <line x1="100" y1="230" x2="60" y2="230" stroke="#E60012" stroke-width="6"/>
+  <line x1="100" y1="282" x2="40" y2="282" stroke="#C0C0C0" stroke-width="4"/>
+  
+  <!-- Corner accent -->
+  <polygon points="0,50 50,0 70,0 0,70" fill="#E60012"/>
+</svg>

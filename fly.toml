@@ -1,0 +1,40 @@
+# Fly.io configuration for Clip Generator
+app = "clip-generator"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  ENVIRONMENT = "production"
+  CORS_ALLOW_ALL = "false"
+  DISABLE_AUTH = "false"
+  REQUIRE_GEMINI = "true"
+  STT_ENGINE = "whisper"
+  USE_QUEUE = "false"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[mounts]
+  source = "clip_data"
+  destination = "/app/uploads"
+  initial_size = "10gb"

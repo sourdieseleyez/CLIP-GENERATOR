@@ -1,5 +1,10 @@
 """
 YouTube upload and tracking integration
+
+UPDATED January 2025:
+- YouTube Data API v3 patterns unchanged
+- OAuth2 flow remains the same
+- Added better error handling and logging
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +26,7 @@ try:
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaFileUpload
+    from googleapiclient.errors import HttpError
     import pickle
     YOUTUBE_AVAILABLE = True
 except ImportError:

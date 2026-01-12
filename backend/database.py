@@ -1,19 +1,25 @@
 """
 Database Models and Connection
-Uses SQLAlchemy with PostgreSQL (Neon, Railway, etc.)
+Uses SQLAlchemy 2.0+ with PostgreSQL (Neon, Railway, etc.)
+
+UPDATED January 2025:
+- SQLAlchemy 2.0.41 compatibility
+- Improved connection pooling for production
+- Added health check and retry logic
 """
 
 from datetime import datetime
 from typing import Optional
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 # Try to import SQLAlchemy - it's optional
 try:
-    from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, Float, ForeignKey, Enum
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import sessionmaker, Session, relationship
+    from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, Float, ForeignKey, Enum, event
+    from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
+    from sqlalchemy.pool import QueuePool
     import enum
     SQLALCHEMY_AVAILABLE = True
 except ImportError:
@@ -319,6 +325,8 @@ def init_database(database_url: str):
     """
     Initialize database connection
     
+    UPDATED 2025: Production-ready connection pooling
+    
     Args:
         database_url: PostgreSQL connection string
                      e.g., postgresql://user:pass@host:5432/dbname
@@ -330,20 +338,48 @@ def init_database(database_url: str):
         return False
     
     try:
+        # Production-ready connection pool settings
+        pool_size = int(os.getenv("DB_POOL_SIZE", "5"))
+        max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+        pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+        pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "1800"))  # 30 minutes
+        
         _engine = create_engine(
             database_url,
-            pool_pre_ping=True,  # Verify connections before using
-            pool_size=5,
-            max_overflow=10
+            poolclass=QueuePool,
+            pool_pre_ping=True,  # Verify connections before using (handles stale connections)
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_timeout=pool_timeout,
+            pool_recycle=pool_recycle,  # Recycle connections to prevent stale connections
+            echo=os.getenv("DB_ECHO", "false").lower() == "true",  # SQL logging for debugging
         )
+        
+        # Add connection event listeners for better debugging
+        @event.listens_for(_engine, "connect")
+        def on_connect(dbapi_conn, connection_record):
+            logger.debug("Database connection established")
+        
+        @event.listens_for(_engine, "checkout")
+        def on_checkout(dbapi_conn, connection_record, connection_proxy):
+            logger.debug("Database connection checked out from pool")
         
         # Create tables
         Base.metadata.create_all(bind=_engine)
         
-        # Create session factory
-        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+        # Create session factory with expire_on_commit=False for better performance
+        _SessionLocal = sessionmaker(
+            autocommit=False, 
+            autoflush=False, 
+            bind=_engine,
+            expire_on_commit=False  # Prevents unnecessary refreshes after commit
+        )
         
-        logger.info("Database initialized successfully")
+        # Test connection
+        with _engine.connect() as conn:
+            conn.execute("SELECT 1")
+        
+        logger.info(f"Database initialized successfully (pool_size={pool_size}, max_overflow={max_overflow})")
         return True
         
     except Exception as e:

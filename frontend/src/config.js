@@ -1,5 +1,8 @@
 // API Configuration
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// In production (when built), use relative URLs so frontend and backend are on same domain
+// In development, use localhost backend
+export const API_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
 // UI Configuration
 export const UI_CONFIG = {

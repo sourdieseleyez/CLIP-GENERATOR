@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="red-glow" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" stop-color="#FF1A1A"/>
+      <stop offset="100%" stop-color="#990000"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Angular black background -->
+  <polygon points="40,0 512,0 512,472 472,512 0,512 0,40" fill="#0a0a0a"/>
+  <polygon points="40,0 512,0 512,472 472,512 0,512 0,40" fill="none" stroke="#E60012" stroke-width="4"/>
+  
+  <!-- Aggressive C shape -->
+  <path d="M380,120 L180,120 L140,160 L140,352 L180,392 L380,392 L380,320 L220,320 L200,300 L200,212 L220,192 L380,192 Z" fill="url(#red-glow)" filter="url(#glow)"/>
+  
+  <!-- Chrome accent slash -->
+  <polygon points="420,80 450,80 350,432 320,432" fill="#C0C0C0" opacity="0.8"/>
+</svg>

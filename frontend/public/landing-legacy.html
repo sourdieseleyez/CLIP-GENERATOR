@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipGen - AI Clipping for Twitch & Kick</title>
+
+    <!-- Google Fonts Import -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Audiowide&family=Chakra+Petch:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS Config Script -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        // 'Audiowide' for headlines, 'Chakra Petch' for body
+                        heading: ['Audiowide', 'sans-serif'],
+                        body: ['"Chakra Petch"', 'sans-serif'],
+                    },
+                    colors: {
+                        // A very dark, almost black blue for the background
+                        'night-sky': '#0a0a1a',
+                        // A vibrant electric blue for accents and CTAs
+                        'cyber-blue': '#00BFFF',
+                        // A bright magenta/pink for secondary accents
+                        'cyber-pink': '#F000B8',
+                        // A light grey for body text
+                        'light-text': '#c0c0d0',
+                        // A darker grey for sub-elements
+                        'dark-accent': '#1a1a3a',
+                    },
+                    // Adding a glow effect using box-shadow
+                    boxShadow: {
+                        'cyber-glow': '0 0 15px 3px rgba(0, 191, 255, 0.4)',
+                        'pink-glow': '0 0 15px 3px rgba(240, 0, 184, 0.4)',
+                    },
+                    // Adding a subtle grainy background texture
+                    backgroundImage: {
+                        'grainy-pattern': "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%231a1a3a' fill-opacity='0.4' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E\")",
+                    }
+                },
+            },
+        }
+    </script>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Styles -->
+    <style>
+        /* Apply custom fonts to the whole page */
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+            background-color: #0a0a1a;
+            color: #c0c0d0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cg fill='%231a1a3a' fill-opacity='0.3'%3E%3Cpath fill-rule='evenodd' d='M0 0h4v4H0V0zm4 4h4v4H4V4z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: 'Audiowide', sans-serif;
+            color: #ffffff;
+        }
+
+        /* Frosted glass effect for the navbar */
+        .glass-nav {
+            background-color: rgba(10, 10, 26, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #1a1a3a;
+        }
+
+        /* Styling for feature cards with a holographic border */
+        .feature-card {
+            background-color: rgba(26, 26, 58, 0.6);
+            /* dark-accent with opacity */
+            border: 1px solid #1a1a3a;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Animated gradient border effect on hover */
+        .feature-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid transparent;
+            background: conic-gradient(from var(--angle, 0deg) at 50% 50%, #00BFFF, #F000B8, #00BFFF) 1;
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover:before {
+            opacity: 1;
+            animation: rotate-gradient 3s linear infinite;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background-color: rgba(26, 26, 58, 0.9);
+        }
+
+        @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        @keyframes rotate-gradient {
+            0% {
+                --angle: 0deg;
+            }
+
+            100% {
+                --angle: 360deg;
+            }
+        }
+
+        /* CTA Button styles */
+        .cta-button {
+            transition: all 0.3s ease;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px 5px rgba(0, 191, 255, 0.5);
+        }
+
+        /* Simple fade-in animation */
+        .fade-in-section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .fade-in-section.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body class="font-body antialiased">
+
+    <!-- Header & Navigation -->
+    <header id="header" class="glass-nav sticky top-0 z-50 w-full">
+        <nav class="container mx-auto max-w-7xl px-6 py-4 flex justify-between items-center">
+            <!-- Logo -->
+            <a href="#" class="text-3xl font-heading text-white">
+                Clip<span class="text-cyber-blue">Gen</span>
+            </a>
+
+            <!-- Mobile Menu Button -->
+            <button id="mobile-menu-button" class="md:hidden text-white focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7">
+                    </path>
+                </svg>
+            </button>
+
+            <!-- Desktop Nav Links -->
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="#features"
+                    class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Features</a>
+                <a href="#integrations"
+                    class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Integrations</a>
+                <a href="#pricing"
+                    class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Pricing</a>
+                <a href="/app"
+                    class="bg-cyber-blue text-night-sky font-bold py-2 px-5 rounded-lg hover:bg-white hover:text-cyber-blue shadow-cyber-glow transition duration-300">
+                    Get Started
+                </a>
+            </div>
+        </nav>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu"
+            class="hidden md:hidden absolute top-full left-0 w-full glass-nav border-t border-dark-accent">
+            <div class="flex flex-col space-y-4 p-6">
+                <a href="#features"
+                    class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Features</a>
+                <a href="#integrations"
+                    class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Integrations</a>
+                <a href="#pricing"
+                    class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Pricing</a>
+                <a href="/app"
+                    class="bg-cyber-blue text-night-sky font-bold py-2 px-5 rounded-lg hover:bg-white hover:text-cyber-blue shadow-cyber-glow transition duration-300 text-center">
+                    Get Started
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="overflow-x-hidden">
+
+        <!-- Hero Section -->
+        <section id="hero" class="relative pt-24 pb-32 md:pt-32 md:pb-40 text-center overflow-hidden">
+            <!-- Background Gradient -->
+            <div class="absolute inset-0 z-0">
+                <div
+                    class="absolute top-0 left-1/4 w-96 h-96 bg-cyber-blue rounded-full filter blur-3xl opacity-20 animate-pulse">
+                </div>
+                <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-cyber-pink rounded-full filter blur-3xl opacity-20 animate-pulse"
+                    style="animation-delay: 2s;"></div>
+            </div>
+
+            <div class="container mx-auto max-w-5xl px-6 relative z-10">
+                <h1 class="text-4xl sm:text-5xl md:text-7xl font-heading mb-6 tracking-wide">
+                    The Future of <span class="text-cyber-blue">Clipping</span> is Here.
+                </h1>
+                <p class="text-lg md:text-2xl font-light text-light-text max-w-3xl mx-auto mb-10">
+                    Stop guessing. ClipGen's AI automatically finds, edits, and shares your best stream moments from
+                    <span class="font-bold text-white">Twitch</span>, <span class="font-bold text-white">Kick</span>,
+                    and beyond.
+                </p>
+                <a href="/app"
+                    class="cta-button bg-cyber-blue text-night-sky text-lg font-bold py-4 px-10 rounded-lg shadow-cyber-glow">
+                    Get Started
+                </a>
+                <p class="text-light-text opacity-70 mt-4 text-sm font-light">No credit card required.</p>
+            </div>
+        </section>
+
+        <!-- Integrations Bar -->
+        <section id="integrations-bar" class="py-12 bg-dark-accent border-y border-gray-700 fade-in-section">
+            <div class="container mx-auto max-w-5xl px-6">
+                <h3 class="text-center text-light-text font-semibold uppercase tracking-widest text-sm mb-8">
+                    Natively Integrated With Your Favorite Platforms
+                </h3>
+                <div class="flex justify-center items-center gap-10 md:gap-20">
+                    <!-- Twitch Logo -->
+                    <div class="flex items-center gap-3">
+                        <svg class="w-10 h-10 text-[#9146FF]" role="img" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                            <title>Twitch</title>
+                            <path
+                                d="M11.571 4.714h1.715v5.143H11.57zm4.714 0h1.715v5.143h-1.715zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0H6zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714v9.429z" />
+                        </svg>
+                        <span class="text-2xl font-heading text-white">TWITCH</span>
+                    </div>
+                    <!-- Kick Logo -->
+                    <div class="flex items-center gap-3">
+                        <svg class="w-10 h-10 text-[#53FC18]" role="img" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                            <title>Kick</title>
+                            <path
+                                d="M19.81 3.231H8.252l-4.05 4.05v8.52h4.05V20.77l4.05-4.05h3.402l4.05-4.05V3.231Zm-2.025 8.099-3.376 3.375H10.95l-2.7 2.7v-2.7H4.198V5.257H17.78v6.073Z" />
+                        </svg>
+                        <span class="text-2xl font-heading text-white">KICK</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-20 md:py-32">
+            <div class="container mx-auto max-w-7xl px-6">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <h2 class="text-3xl md:text-5xl font-heading mb-4">Focus on Streaming. We'll Handle the Clips.</h2>
+                    <p class="text-lg text-light-text font-light">
+                        ClipGen is more than a tool—it's your personal content editor, social media manager, and growth
+                        hacker, all powered by AI.
+                    </p>
+                </div>
+
+                <!-- Features Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Card 1: AI Detection -->
+                    <div class="feature-card rounded-xl p-8 fade-in-section">
+                        <div class="p-3 mb-4 inline-block bg-cyber-blue rounded-lg shadow-cyber-glow">
+                            <svg class="w-7 h-7 text-night-sky" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.624L16.5 21.75l-.398-1.126a3.375 3.375 0 00-2.456-2.456L12.75 18l1.126-.398a3.375 3.375 0 002.456-2.456L16.5 14.25l.398 1.126a3.375 3.375 0 002.456 2.456L20.25 18l-1.126.398a3.375 3.375 0 00-2.456 2.456z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-heading mb-3">AI Smart Detection</h3>
+                        <p class="font-light text-light-text">Our AI scans your VODs for hype moments, emotional peaks,
+                            and funny interactions so you never miss a viral clip.</p>
+                    </div>
+
+                    <!-- Card 2: Integrations -->
+                    <div class="feature-card rounded-xl p-8 fade-in-section" style="transition-delay: 100ms;">
+                        <div class="p-3 mb-4 inline-block bg-cyber-pink rounded-lg shadow-pink-glow">
+                            <svg class="w-7 h-7 text-night-sky" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-heading mb-3">Direct Integrations</h3>
+                        <p class="font-light text-light-text">Connect your Twitch and Kick accounts in seconds. ClipGen
+                            auto-imports VODs and syncs your clipping data.</p>
+                    </div>
+
+                    <!-- Card 3: Cloud Editor -->
+                    <div class="feature-card rounded-xl p-8 fade-in-section" style="transition-delay: 200ms;">
+                        <div class="p-3 mb-4 inline-block bg-cyber-blue rounded-lg shadow-cyber-glow">
+                            <svg class="w-7 h-7 text-night-sky" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-heading mb-3">Instant Cloud Editor</h3>
+                        <p class="font-light text-light-text">Trim, resize, add text, and burn-in your branding. Our
+                            lightning-fast editor runs entirely in your browser.</p>
+                    </div>
+
+                    <!-- Card 4: Multi-Share -->
+                    <div class="feature-card rounded-xl p-8 fade-in-section" style="transition-delay: 300ms;">
+                        <div class="p-3 mb-4 inline-block bg-cyber-pink rounded-lg shadow-pink-glow">
+                            <svg class="w-7 h-7 text-night-sky" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M7.217 10.907a2.25 2.25 0 100 4.186m0-4.186c.462.03.924.083 1.385.162m-1.385-.162l-3.236 3.236m3.236-3.236L6.25 12.25m3.236 2.857l-3.236-3.236m3.236 3.236l3.236 3.236m0-3.236l3.236-3.236m-3.236 3.236l-3.236 3.236M15.75 12a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-heading mb-3">One-Click Sharing</h3>
+                        <p class="font-light text-light-text">Export and post your finished clips directly to TikTok,
+                            YouTube Shorts, Instagram Reels, and Twitter.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Integrations Deep Dive -->
+        <section id="integrations" class="py-20 md:py-32 bg-dark-accent border-y border-gray-700">
+            <div class="container mx-auto max-w-7xl px-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+                    <!-- Text Content -->
+                    <div class="fade-in-section">
+                        <span class="text-cyber-blue font-bold uppercase tracking-widest">Full Integration</span>
+                        <h2 class="text-3xl md:text-5xl font-heading my-4">Twitch & Kick. No Compromises.</h2>
+                        <p class="text-lg text-light-text font-light mb-8">
+                            We built ClipGen to work natively with the platforms you use. Connect your accounts, and we
+                            handle the rest. Our system imports your VODs, analyzes them for clips, and even reads your
+                            chat for hype moments.
+                        </p>
+                        <div class="space-y-6">
+                            <div class="flex items-start gap-4">
+                                <div class="p-2 bg-night-sky border border-cyber-blue rounded-lg mt-1">
+                                    <svg class="w-6 h-6 text-cyber-blue" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M4.5 12.75l6 6 9-13.5" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-xl font-heading text-white">Auto-Import VODs</h4>
+                                    <p class="text-light-text font-light">As soon as you go offline, ClipGen starts
+                                        scanning. No manual uploads.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <div class="p-2 bg-night-sky border border-cyber-blue rounded-lg mt-1">
+                                    <svg class="w-6 h-6 text-cyber-blue" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M4.5 12.75l6 6 9-13.5" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-xl font-heading text-white">Chat-Aware AI</h4>
+                                    <p class="text-light-text font-light">Our AI reads chat velocity and emote usage to
+                                        find moments your community loved.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Content -->
+                    <div class="fade-in-section" style="transition-delay: 200ms;">
+                        <div class="relative">
+                            <!-- Base Card -->
+                            <div class="relative z-10 p-8 bg-night-sky rounded-xl border border-gray-700 shadow-2xl">
+                                <h3 class="text-2xl font-heading mb-6 text-center">Connected Platforms</h3>
+                                <div
+                                    class="flex items-center justify-between p-6 rounded-lg bg-dark-accent border border-gray-700 mb-4">
+                                    <div class="flex items-center gap-4">
+                                        <svg class="w-10 h-10 text-[#9146FF]" role="img" viewBox="0 0 24 24"
+                                            xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                                            <title>Twitch</title>
+                                            <path
+                                                d="M11.571 4.714h1.715v5.143H11.57zm4.714 0h1.715v5.143h-1.715zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0H6zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714v9.429z" />
+                                        </svg>
+                                        <span class="text-xl font-heading text-white">MyTwitchChannel</span>
+                                    </div>
+                                    <span class="text-sm font-medium text-green-400">● Connected</span>
+                                </div>
+                                <div
+                                    class="flex items-center justify-between p-6 rounded-lg bg-dark-accent border border-gray-700">
+                                    <div class="flex items-center gap-4">
+                                        <svg class="w-10 h-10 text-[#53FC18]" role="img" viewBox="0 0 24 24"
+                                            xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                                            <title>Kick</title>
+                                            <path
+                                                d="M19.81 3.231H8.252l-4.05 4.05v8.52h4.05V20.77l4.05-4.05h3.402l4.05-4.05V3.231Zm-2.025 8.099-3.376 3.375H10.95l-2.7 2.7v-2.7H4.198V5.257H17.78v6.073Z" />
+                                        </svg>
+                                        <span class="text-xl font-heading text-white">MyKickStream</span>
+                                    </div>
+                                    <span class="text-sm font-medium text-green-400">● Connected</span>
+                                </div>
+                            </div>
+                            <!-- Background Glow -->
+                            <div class="absolute -inset-4 bg-cyber-blue opacity-20 rounded-2xl filter blur-2xl z-0">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section id="pricing" class="py-20 md:py-32">
+            <div class="container mx-auto max-w-6xl px-6">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <h2 class="text-3xl md:text-5xl font-heading mb-4">Pricing That Scales With You</h2>
+                    <p class="text-lg text-light-text font-light">
+                        Start for free and upgrade when you're ready. All plans are designed for creators and enterprise
+                        teams.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Plan 1: Starter (Free) -->
+                    <div class="feature-card rounded-xl p-8 flex flex-col fade-in-section">
+                        <h3 class="text-2xl font-heading mb-2">Starter</h3>
+                        <p class="text-4xl font-heading mb-4 text-white">$0<span
+                                class="text-lg text-light-text font-body font-light">/mo</span></p>
+                        <p class="text-light-text font-light mb-6 min-h-[4.5rem]">For new streamers getting started with
+                            clipping.</p>
+                        <ul class="space-y-3 mb-8 text-light-text font-light flex-grow">
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>1 Connected Channel</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>10 AI Clips per month</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Basic Cloud Editor</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>720p Exports</li>
+                        </ul>
+                        <a href="/app"
+                            class="w-full text-center bg-dark-accent border border-cyber-blue text-cyber-blue font-bold py-3 px-6 rounded-lg hover:bg-cyber-blue hover:text-night-sky transition duration-300">
+                            Get Started
+                        </a>
+                    </div>
+
+                    <!-- Plan 2: Pro (Paid) -->
+                    <div class="relative rounded-xl border-2 border-cyber-blue shadow-cyber-glow p-8 flex flex-col fade-in-section"
+                        style="transition-delay: 150ms;">
+                        <span
+                            class="absolute -top-4 left-1/2 -translate-x-1/2 bg-cyber-blue text-night-sky text-sm font-bold px-4 py-1 rounded-full uppercase tracking-wider">Most
+                            Popular</span>
+                        <h3 class="text-2xl font-heading mb-2">Pro</h3>
+                        <p class="text-4xl font-heading mb-4 text-white">$19<span
+                                class="text-lg text-light-text font-body font-light">/mo</span></p>
+                        <p class="text-light-text font-light mb-6 min-h-[4.5rem]">For serious creators ready to automate
+                            their growth.</p>
+                        <ul class="space-y-3 mb-8 text-light-text font-light flex-grow">
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>5 Connected Channels</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Unlimited AI Clips</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Advanced Cloud Editor</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>1080p & 4K Exports</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Auto-Post to Socials</li>
+                        </ul>
+                        <a href="/app"
+                            class="cta-button w-full text-center bg-cyber-blue text-night-sky font-bold py-3 px-6 rounded-lg shadow-cyber-glow">
+                            Get Started
+                        </a>
+                    </div>
+
+                    <!-- Plan 3: Enterprise -->
+                    <div class="feature-card rounded-xl p-8 flex flex-col fade-in-section"
+                        style="transition-delay: 300ms;">
+                        <h3 class="text-2xl font-heading mb-2">Enterprise</h3>
+                        <p class="text-4xl font-heading mb-4 text-white">Custom</p>
+                        <p class="text-light-text font-light mb-6 min-h-[4.5rem]">For agencies, esports orgs, and large
+                            content teams.</p>
+                        <ul class="space-y-3 mb-8 text-light-text font-light flex-grow">
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Unlimited Channels</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Custom AI Models</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Team Collaboration Tools</li>
+                            <li class="flex items-center gap-3"><svg class="w-5 h-5 text-cyber-blue"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>Dedicated Support & API</li>
+                        </ul>
+                        <a href="/app"
+                            class="w-full text-center bg-dark-accent border border-cyber-blue text-cyber-blue font-bold py-3 px-6 rounded-lg hover:bg-cyber-blue hover:text-night-sky transition duration-300">
+                            Contact Sales
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA / Get Started -->
+        <section id="signup" class="py-20 md:py-32 bg-dark-accent border-t border-gray-700">
+            <div class="container mx-auto max-w-3xl px-6 text-center">
+                <h2 class="text-3xl md:text-5xl font-heading mb-6">Join the Clipping Revolution.</h2>
+                <p class="text-lg text-light-text font-light mb-10">
+                    Start creating AI-powered clips in seconds. No credit card required.
+                </p>
+                <a href="/app"
+                    class="cta-button inline-block bg-cyber-blue text-night-sky text-lg font-bold py-4 px-10 rounded-lg shadow-cyber-glow">
+                    Get Started
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-16 bg-night-sky border-t border-dark-accent">
+        <div class="container mx-auto max-w-7xl px-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div class="text-center md:text-left">
+                    <a href="#" class="text-3xl font-heading text-white">
+                        Clip<span class="text-cyber-blue">Gen</span>
+                    </a>
+                    <p class="text-light-text font-light mt-2 max-w-xs">AI-powered clipping for modern creators.</p>
+                </div>
+                <div class="flex flex-wrap justify-center md:justify-end gap-x-6 gap-y-4">
+                    <a href="#features"
+                        class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Features</a>
+                    <a href="#integrations"
+                        class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Integrations</a>
+                    <a href="#pricing"
+                        class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Pricing</a>
+                    <a href="#"
+                        class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Privacy
+                        Policy</a>
+                    <a href="#" class="font-medium text-light-text hover:text-cyber-blue transition duration-300">Terms
+                        of Service</a>
+                </div>
+            </div>
+            <div class="border-t border-dark-accent mt-12 pt-8 text-center text-light-text opacity-70 font-light">
+                &copy; 2025 ClipGen Technologies Inc. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- Mobile Menu Toggle ---
+            const menuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            menuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Close mobile menu when a link is clicked
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                });
+            });
+
+            // --- Smooth Scrolling ---
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    if (this.hash !== "") {
+                        // Don't prevent default for links to "#"
+                        if (this.hash === '#') return;
+
+                        e.preventDefault();
+                        const hash = this.hash;
+                        const targetElement = document.querySelector(hash);
+
+                        if (targetElement) {
+                            // Adjust for sticky header height
+                            const headerOffset = document.getElementById('header').offsetHeight;
+                            const elementPosition = targetElement.getBoundingClientRect().top;
+                            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                            window.scrollTo({
+                                top: offsetPosition,
+                                behavior: "smooth"
+                            });
+                        }
+                    }
+                });
+            });
+
+            // --- Fade-in on Scroll ---
+            const sections = document.querySelectorAll('.fade-in-section');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1 // Trigger when 10% of the element is visible
+            });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+
+        // --- Handle Signup Form ---
+        function handleSignup(event) {
+            event.preventDefault();
+            const email = event.target.email.value;
+
+            if (email) {
+                // Store email and redirect to app
+                sessionStorage.setItem('signupEmail', email);
+                window.location.href = '/app';
+            } else {
+                const messageBox = document.getElementById('message-box');
+                messageBox.textContent = 'Please enter a valid email address.';
+                messageBox.classList.remove('hidden', 'bg-green-500');
+                messageBox.classList.add('bg-red-500');
+                setTimeout(() => messageBox.classList.add('hidden'), 5000);
+            }
+        }
+    </script>
+</body>
+
+</html>

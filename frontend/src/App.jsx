@@ -30,13 +30,18 @@ import SubmitJob from './SubmitJob';
 import Pricing from './Pricing';
 import AdminDashboard from './AdminDashboard';
 import { ForgotPassword, ResetPassword, VerifyEmail, VerificationBanner } from './AuthPages';
+import LandingPage from './LandingPage';
+import TermsOfService from './TermsOfService';
+import PrivacyPolicy from './PrivacyPolicy';
+import Contact from './Contact';
+import Documentation from './Documentation';
 
 function App() {
   // Check if we're in development mode
   const isDev = import.meta.env.DEV;
   
-  // Navigation state
-  const [currentPage, setCurrentPage] = useState('generate');
+  // Navigation state - start with landing page for non-logged-in users
+  const [currentPage, setCurrentPage] = useState('landing');
   
   // Auth state
   const [authMode, setAuthMode] = useState('login');
@@ -428,6 +433,37 @@ function App() {
 
 
 
+  // Handle navigation from landing page
+  const handleLandingNavigate = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Handle "Get Started" from landing page
+  const handleGetStarted = () => {
+    setCurrentPage('generate');
+    setShowAuthModal(true);
+    setAuthMode('register');
+  };
+
+  // Render landing page and related pages (terms, privacy, contact, docs)
+  if (currentPage === 'landing' || currentPage === 'terms' || currentPage === 'privacy' || currentPage === 'contact' || currentPage === 'docs') {
+    if (currentPage === 'landing') {
+      return <LandingPage onGetStarted={handleGetStarted} onNavigate={handleLandingNavigate} />;
+    }
+    if (currentPage === 'terms') {
+      return <TermsOfService onBack={() => setCurrentPage('landing')} />;
+    }
+    if (currentPage === 'privacy') {
+      return <PrivacyPolicy onBack={() => setCurrentPage('landing')} />;
+    }
+    if (currentPage === 'contact') {
+      return <Contact onBack={() => setCurrentPage('landing')} />;
+    }
+    if (currentPage === 'docs') {
+      return <Documentation onBack={() => setCurrentPage('landing')} />;
+    }
+  }
+
   return (
     <div className="App">
       {/* Dev Mode Banner */}
@@ -440,7 +476,7 @@ function App() {
       
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-brand">
+        <div className="sidebar-brand" onClick={() => !token && setCurrentPage('landing')} style={{ cursor: !token ? 'pointer' : 'default' }}>
           <Video size={20} />
           <span>ClipGen</span>
         </div>

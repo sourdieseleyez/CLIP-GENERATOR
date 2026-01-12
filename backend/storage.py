@@ -1,15 +1,32 @@
 """
 Cloud Storage Manager
 Supports S3-compatible storage (AWS S3, Cloudflare R2, DigitalOcean Spaces, etc.)
+
+UPDATED January 2025:
+- boto3 1.35+ compatibility (Python 3.8 support dropped April 2025)
+- Added retry logic for transient failures
+- Improved error handling and logging
 """
 
 import os
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, BotoCoreError
+from botocore.config import Config
 from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration for transient failures
+BOTO_CONFIG = Config(
+    retries={
+        'max_attempts': 3,
+        'mode': 'adaptive'  # Adaptive retry mode (2025 best practice)
+    },
+    connect_timeout=10,
+    read_timeout=30,
+    max_pool_connections=25
+)
 
 
 class StorageManager:
@@ -49,20 +66,21 @@ class StorageManager:
             return
         
         try:
-            # Initialize S3 client
+            # Initialize S3 client with retry configuration
             self.s3_client = boto3.client(
                 's3',
                 endpoint_url=endpoint_url,
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
-                region_name=region
+                region_name=region,
+                config=BOTO_CONFIG
             )
             
             # Test connection
             self.s3_client.head_bucket(Bucket=bucket_name)
             logger.info(f"Storage initialized: {bucket_name}")
             
-        except ClientError as e:
+        except (ClientError, BotoCoreError) as e:
             logger.error(f"Storage initialization failed: {e}")
             self.enabled = False
     
