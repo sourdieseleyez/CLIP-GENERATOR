@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 from gemini_processor import GeminiVideoProcessor
 from storage import init_storage, get_storage
-from database import init_database, get_db, is_database_enabled, User as DBUser, Video as DBVideo, Job as DBJob, Clip as DBClip
+from database import init_database, get_db, is_database_enabled, User as DBUser, Video as DBVideo, Job as DBJob, Clip as DBClip, Payout, PayoutStatus
 
 # Optional queueing imports will be attempted later (lazy)
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -1228,6 +1228,209 @@ async def admin_failed_jobs():
     except Exception as e:
         logger.error(f"Error fetching failed jobs: {e}")
         raise HTTPException(status_code=500, detail="Failed to list failed jobs")
+
+
+# ============================================================================
+# ADMIN DASHBOARD ENDPOINTS
+# ============================================================================
+
+async def require_admin(current_user: dict = Depends(get_current_user)):
+    """Dependency to require admin access"""
+    if not is_database_enabled():
+        raise HTTPException(status_code=501, detail="Database not configured")
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(DBUser.email == current_user["email"]).first()
+        if not user or not user.is_admin:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        return current_user
+    finally:
+        db.close()
+
+
+@app.get("/admin/stats")
+async def admin_stats(current_user: dict = Depends(require_admin)):
+    """Get admin dashboard statistics"""
+    db = get_db()
+    try:
+        from sqlalchemy import func
+        
+        # User stats
+        total_users = db.query(func.count(DBUser.id)).scalar() or 0
+        verified_users = db.query(func.count(DBUser.id)).filter(DBUser.email_verified == True).scalar() or 0
+        
+        # Job stats
+        total_jobs = db.query(func.count(DBJob.id)).scalar() or 0
+        completed_jobs = db.query(func.count(DBJob.id)).filter(DBJob.status == "completed").scalar() or 0
+        
+        # Clip stats
+        total_clips = db.query(func.count(DBClip.id)).scalar() or 0
+        total_revenue = db.query(func.sum(DBClip.revenue)).scalar() or 0
+        
+        # Payout stats
+        pending_payouts = 0
+        pending_payout_amount = 0.0
+        if Payout:
+            pending_payouts = db.query(func.count(Payout.id)).filter(Payout.status == PayoutStatus.PENDING).scalar() or 0
+            pending_payout_amount = db.query(func.sum(Payout.amount)).filter(Payout.status == PayoutStatus.PENDING).scalar() or 0.0
+        
+        return {
+            "total_users": total_users,
+            "verified_users": verified_users,
+            "total_jobs": total_jobs,
+            "completed_jobs": completed_jobs,
+            "total_clips": total_clips,
+            "total_revenue": round(total_revenue, 2),
+            "pending_payouts": pending_payouts,
+            "pending_payout_amount": round(pending_payout_amount, 2)
+        }
+    finally:
+        db.close()
+
+
+@app.get("/admin/users")
+async def admin_list_users(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: dict = Depends(require_admin)
+):
+    """List all users for admin"""
+    db = get_db()
+    try:
+        users = db.query(DBUser).order_by(DBUser.created_at.desc()).offset(offset).limit(limit).all()
+        
+        return [
+            {
+                "id": u.id,
+                "email": u.email,
+                "credits": u.credits,
+                "tier": u.tier.value if u.tier else "bronze",
+                "email_verified": u.email_verified,
+                "is_admin": u.is_admin,
+                "total_clips": u.total_clips,
+                "total_earnings": u.total_earnings,
+                "created_at": u.created_at.isoformat() if u.created_at else None
+            }
+            for u in users
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/admin/users/{user_id}/add-credits")
+async def admin_add_credits(
+    user_id: int,
+    amount: int,
+    current_user: dict = Depends(require_admin)
+):
+    """Add credits to a user"""
+    if amount <= 0 or amount > 1000:
+        raise HTTPException(status_code=400, detail="Amount must be between 1 and 1000")
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.credits += amount
+        db.commit()
+        
+        return {"message": f"Added {amount} credits to {user.email}", "new_balance": user.credits}
+    finally:
+        db.close()
+
+
+@app.get("/admin/payouts")
+async def admin_list_payouts(
+    limit: int = 20,
+    current_user: dict = Depends(require_admin)
+):
+    """List payout requests"""
+    if not Payout:
+        return []
+    
+    db = get_db()
+    try:
+        payouts = db.query(Payout).order_by(Payout.requested_at.desc()).limit(limit).all()
+        
+        result = []
+        for p in payouts:
+            clipper = db.query(DBUser).filter(DBUser.id == p.clipper_id).first()
+            result.append({
+                "id": p.id,
+                "clipper_id": p.clipper_id,
+                "clipper_email": clipper.email if clipper else "Unknown",
+                "amount": p.amount,
+                "status": p.status.value if p.status else "pending",
+                "requested_at": p.requested_at.isoformat() if p.requested_at else None
+            })
+        
+        return result
+    finally:
+        db.close()
+
+
+@app.patch("/admin/payouts/{payout_id}")
+async def admin_update_payout(
+    payout_id: int,
+    status: str,
+    current_user: dict = Depends(require_admin)
+):
+    """Update payout status"""
+    if not Payout:
+        raise HTTPException(status_code=501, detail="Payouts not configured")
+    
+    if status not in ["completed", "failed"]:
+        raise HTTPException(status_code=400, detail="Status must be 'completed' or 'failed'")
+    
+    db = get_db()
+    try:
+        payout = db.query(Payout).filter(Payout.id == payout_id).first()
+        if not payout:
+            raise HTTPException(status_code=404, detail="Payout not found")
+        
+        payout.status = PayoutStatus.COMPLETED if status == "completed" else PayoutStatus.FAILED
+        payout.processed_at = datetime.utcnow()
+        if status == "completed":
+            payout.completed_at = datetime.utcnow()
+        
+        db.commit()
+        
+        return {"message": f"Payout {payout_id} marked as {status}"}
+    finally:
+        db.close()
+
+
+@app.get("/admin/recent-activity")
+async def admin_recent_activity(
+    days: int = 7,
+    current_user: dict = Depends(require_admin)
+):
+    """Get recent activity summary"""
+    db = get_db()
+    try:
+        from sqlalchemy import func
+        
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        
+        new_users = db.query(func.count(DBUser.id)).filter(DBUser.created_at >= cutoff).scalar() or 0
+        completed_jobs = db.query(func.count(DBJob.id)).filter(
+            DBJob.status == "completed",
+            DBJob.completed_at >= cutoff
+        ).scalar() or 0
+        new_clips = db.query(func.count(DBClip.id)).filter(DBClip.created_at >= cutoff).scalar() or 0
+        
+        return {
+            "new_users": new_users,
+            "completed_jobs": completed_jobs,
+            "new_clips": new_clips,
+            "period_days": days
+        }
+    finally:
+        db.close()
+
 
 @app.get("/clips/{clip_id}/download")
 async def download_clip(

@@ -482,8 +482,8 @@ function App() {
       
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-brand" onClick={() => !token && setCurrentPage('landing')} style={{ cursor: !token ? 'pointer' : 'default' }}>
-          <Video size={20} />
+        <div className="sidebar-brand" onClick={() => setCurrentPage('landing')} style={{ cursor: 'pointer' }}>
+          <img src="/logos/logo-mark.svg" alt="ClipGen" className="sidebar-logo" />
           <span>ClipGen</span>
         </div>
 

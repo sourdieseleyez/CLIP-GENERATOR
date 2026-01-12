@@ -69,6 +69,16 @@
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--highlight-gray);
+  transition: opacity 0.2s;
+}
+
+.sidebar-brand:hover {
+  opacity: 0.8;
+}
+
+.sidebar-logo {
+  height: 24px;
+  width: auto;
 }
 
 .sidebar-brand svg {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, User, ArrowRight, Video, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { API_URL } from './config';
 import './AuthPage.css';
 
@@ -115,9 +115,8 @@ function AuthPage({ onAuthSuccess, initialMode = 'login', onNavigate }) {
         />
         <div className="auth-image-overlay" />
         <div className="auth-image-content">
-          <div className="auth-brand">
-            <Video size={32} />
-            <span>ClipGen</span>
+          <div className="auth-brand" onClick={() => onNavigate?.('landing')} style={{ cursor: 'pointer' }}>
+            <img src="/logos/logo-full.svg" alt="ClipGen" className="auth-brand-logo" />
           </div>
           <h1>Transform Your Content</h1>
           <p>AI-powered clip generation for creators, streamers, and marketers.</p>
