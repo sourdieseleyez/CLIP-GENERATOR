@@ -20,7 +20,7 @@ import {
   Coins
 } from 'lucide-react';
 import './App.css';
-import { API_URL, UI_CONFIG, DISABLE_AUTH } from './config';
+import { API_URL, UI_CONFIG, DISABLE_AUTH, FILE_SIZE_LIMITS, formatFileSize } from './config';
 import CustomSelect from './CustomSelect';
 import Dashboard from './Dashboard';
 import ClipsLibrary from './ClipsLibrary';
@@ -266,6 +266,25 @@ function App() {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      // Get max file size based on user's plan
+      const maxSize = userProfile?.max_file_size || FILE_SIZE_LIMITS.FREE;
+      const maxSizeDisplay = userProfile?.max_file_size_display || '500MB';
+      const isPaidPlan = userProfile?.subscription_plan && userProfile.subscription_plan !== 'free';
+      
+      if (selectedFile.size > maxSize) {
+        const fileSizeDisplay = formatFileSize(selectedFile.size);
+        const upgradeMsg = !isPaidPlan ? ' Upgrade to Pro for 5GB uploads.' : '';
+        setProcessingStatus({ 
+          type: 'error', 
+          message: `File too large (${fileSizeDisplay}). Maximum size: ${maxSizeDisplay}.${upgradeMsg}` 
+        });
+        setFile(null);
+        e.target.value = ''; // Reset file input
+        return;
+      }
+      setProcessingStatus(null);
+    }
     setFile(selectedFile);
   };
 
@@ -634,7 +653,7 @@ function App() {
         
         {/* Render different pages based on currentPage */}
         {currentPage === 'dashboard' && token && (
-          <Dashboard token={token} />
+          <Dashboard token={token} onNavigate={setCurrentPage} />
         )}
         
         {currentPage === 'marketplace' && token && (
@@ -738,6 +757,12 @@ function App() {
                   {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                 </div>
               )}
+              <div className="file-size-limit">
+                Max file size: {userProfile?.max_file_size_display || '500MB'}
+                {userProfile?.subscription_plan === 'free' && (
+                  <span className="upgrade-hint"> • <a href="#" onClick={(e) => { e.preventDefault(); setCurrentPage('pricing'); }}>Upgrade for 5GB</a></span>
+                )}
+              </div>
             </div>
           )}
 

@@ -465,6 +465,25 @@
   font-size: 0.75rem;
 }
 
+.file-size-limit {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted, #666);
+}
+
+.file-size-limit .upgrade-hint {
+  color: var(--accent-primary, #6366f1);
+}
+
+.file-size-limit .upgrade-hint a {
+  color: var(--accent-primary, #6366f1);
+  text-decoration: none;
+}
+
+.file-size-limit .upgrade-hint a:hover {
+  text-decoration: underline;
+}
+
 /* Clip Options */
 .clip-options {
   display: grid;

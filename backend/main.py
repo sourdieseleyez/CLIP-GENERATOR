@@ -196,10 +196,34 @@ if not is_database_enabled():
         }
         logger.info(f"Seeded in-memory dev user: {DEV_USER_EMAIL}")
 
-# Configuration
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+# Configuration - File Size Limits by Plan
+MAX_FILE_SIZE_FREE = 500 * 1024 * 1024   # 500MB for free users
+MAX_FILE_SIZE_PAID = 5 * 1024 * 1024 * 1024  # 5GB for Pro/Agency users
 ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska"]
 ALLOWED_EXTENSIONS = [".mp4", ".mov", ".avi", ".mkv"]
+
+
+def get_user_max_file_size(user_email: str) -> int:
+    """Get the maximum file size allowed for a user based on their subscription plan"""
+    if is_database_enabled():
+        db = get_db()
+        try:
+            user = db.query(DBUser).filter(DBUser.email == user_email).first()
+            if user and hasattr(user, 'subscription_plan'):
+                # Check if subscription is active (not expired)
+                if user.subscription_expires is None or user.subscription_expires > datetime.utcnow():
+                    if user.subscription_plan and user.subscription_plan.value in ['pro', 'agency']:
+                        return MAX_FILE_SIZE_PAID
+            return MAX_FILE_SIZE_FREE
+        finally:
+            db.close()
+    else:
+        # In-memory mode - check if user has a plan set
+        user = users_db.get(user_email, {})
+        plan = user.get('subscription_plan', 'free')
+        if plan in ['pro', 'agency']:
+            return MAX_FILE_SIZE_PAID
+        return MAX_FILE_SIZE_FREE
 
 # Models
 class UserCreate(BaseModel):
@@ -620,6 +644,9 @@ async def upload_video(
     current_user: dict = Depends(get_current_user)
 ):
     try:
+        # Get user's max file size based on subscription plan
+        max_file_size = get_user_max_file_size(current_user["email"])
+        
         # Validate file type
         if file.content_type not in ALLOWED_VIDEO_TYPES:
             raise HTTPException(
@@ -642,16 +669,20 @@ async def upload_video(
         unique_filename = f"{uuid.uuid4()}_{file.filename}"
         local_path = f"uploads/{unique_filename}"
         
-        # Save file locally first (with size check)
+        # Save file locally first (with size check based on user's plan)
         file_size = 0
         with open(local_path, "wb") as buffer:
             while chunk := await file.read(8192):
                 file_size += len(chunk)
-                if file_size > MAX_FILE_SIZE:
+                if file_size > max_file_size:
                     os.remove(local_path)
+                    max_size_mb = max_file_size / 1024 / 1024
+                    max_size_gb = max_file_size / 1024 / 1024 / 1024
+                    size_str = f"{max_size_gb:.1f}GB" if max_size_gb >= 1 else f"{max_size_mb:.0f}MB"
+                    upgrade_msg = " Upgrade to Pro for 5GB uploads." if max_file_size == MAX_FILE_SIZE_FREE else ""
                     raise HTTPException(
                         status_code=413,
-                        detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
+                        detail=f"File too large. Maximum size: {size_str}.{upgrade_msg}"
                     )
                 buffer.write(chunk)
         
@@ -1342,6 +1373,53 @@ async def admin_add_credits(
         db.close()
 
 
+@app.post("/admin/users/{user_id}/set-subscription")
+async def admin_set_subscription(
+    user_id: int,
+    plan: str,
+    days: Optional[int] = None,
+    current_user: dict = Depends(require_admin)
+):
+    """Set a user's subscription plan
+    
+    Args:
+        user_id: User ID to update
+        plan: 'free', 'pro', or 'agency'
+        days: Number of days for subscription (None = lifetime/never expires)
+    """
+    from database import SubscriptionPlan
+    
+    if plan not in ['free', 'pro', 'agency']:
+        raise HTTPException(status_code=400, detail="Plan must be 'free', 'pro', or 'agency'")
+    
+    db = get_db()
+    try:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Set subscription plan
+        user.subscription_plan = SubscriptionPlan(plan)
+        
+        # Set expiration
+        if days is not None and days > 0:
+            user.subscription_expires = datetime.utcnow() + timedelta(days=days)
+        else:
+            user.subscription_expires = None  # Never expires
+        
+        db.commit()
+        
+        expires_str = user.subscription_expires.isoformat() if user.subscription_expires else "never"
+        return {
+            "message": f"Updated {user.email} to {plan} plan",
+            "plan": plan,
+            "expires": expires_str,
+            "max_file_size": "5GB" if plan in ['pro', 'agency'] else "500MB"
+        }
+    finally:
+        db.close()
+
+
 @app.get("/admin/payouts")
 async def admin_list_payouts(
     limit: int = 20,
@@ -1960,7 +2038,10 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
             "email": current_user["email"],
             "credits": 999,
             "email_verified": True,
-            "is_dev_mode": True
+            "is_dev_mode": True,
+            "subscription_plan": "pro",  # Dev mode gets pro features
+            "max_file_size": MAX_FILE_SIZE_PAID,
+            "max_file_size_display": "5GB"
         }
     
     db = get_db()
@@ -1968,6 +2049,18 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
         user = db.query(DBUser).filter(DBUser.email == current_user["email"]).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Determine subscription status
+        subscription_plan = "free"
+        if hasattr(user, 'subscription_plan') and user.subscription_plan:
+            # Check if subscription is still active
+            if user.subscription_expires is None or user.subscription_expires > datetime.utcnow():
+                subscription_plan = user.subscription_plan.value
+        
+        # Get max file size for this user
+        max_file_size = get_user_max_file_size(user.email)
+        max_size_gb = max_file_size / 1024 / 1024 / 1024
+        max_size_display = f"{max_size_gb:.1f}GB" if max_size_gb >= 1 else f"{max_file_size / 1024 / 1024:.0f}MB"
         
         return {
             "id": user.id,
@@ -1983,10 +2076,43 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
             "display_name": user.display_name,
             "bio": user.bio,
             "is_admin": user.is_admin or False,
-            "created_at": user.created_at.isoformat() if user.created_at else None
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "subscription_plan": subscription_plan,
+            "subscription_expires": user.subscription_expires.isoformat() if hasattr(user, 'subscription_expires') and user.subscription_expires else None,
+            "max_file_size": max_file_size,
+            "max_file_size_display": max_size_display
         }
     finally:
         db.close()
+
+
+@app.get("/user/limits")
+async def get_user_limits(current_user: dict = Depends(get_current_user)):
+    """Get current user's upload limits and plan features"""
+    max_file_size = get_user_max_file_size(current_user["email"])
+    max_size_gb = max_file_size / 1024 / 1024 / 1024
+    max_size_display = f"{max_size_gb:.1f}GB" if max_size_gb >= 1 else f"{max_file_size / 1024 / 1024:.0f}MB"
+    
+    is_paid = max_file_size == MAX_FILE_SIZE_PAID
+    
+    return {
+        "max_file_size": max_file_size,
+        "max_file_size_display": max_size_display,
+        "is_paid_plan": is_paid,
+        "features": {
+            "max_clips_per_job": 20 if is_paid else 5,
+            "priority_processing": is_paid,
+            "hd_exports": is_paid,
+            "watermark_free": is_paid,
+            "url_processing_limit": "unlimited" if is_paid else "10GB/month"
+        },
+        "upgrade_benefits": None if is_paid else {
+            "max_file_size": "5GB",
+            "max_clips_per_job": 20,
+            "priority_processing": True,
+            "price": "$29/month"
+        }
+    }
 
 
 # ============================================================================

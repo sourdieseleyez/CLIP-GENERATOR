@@ -45,6 +45,12 @@ if SQLALCHEMY_AVAILABLE:
         SILVER = "silver"      # 75/25 split
         GOLD = "gold"          # 80/20 split
         PLATINUM = "platinum"  # 85/15 split
+    
+    class SubscriptionPlan(enum.Enum):
+        """User subscription plans"""
+        FREE = "free"          # 500MB upload, 3 clips/month
+        PRO = "pro"            # 5GB upload, unlimited clips
+        AGENCY = "agency"      # 5GB upload, multi-channel, priority
 
     class User(Base):
         """User model"""
@@ -75,6 +81,10 @@ if SQLALCHEMY_AVAILABLE:
         role = Column(Enum(UserRole), default=UserRole.BOTH)
         tier = Column(Enum(UserTier), default=UserTier.BRONZE)
         
+        # Subscription plan
+        subscription_plan = Column(Enum(SubscriptionPlan), default=SubscriptionPlan.FREE)
+        subscription_expires = Column(DateTime, nullable=True)  # None = never expires (lifetime or free)
+        
         # Clipper stats
         total_earnings = Column(Float, default=0.0)
         total_clips = Column(Integer, default=0)
@@ -93,6 +103,7 @@ else:
     User = None
     UserRole = None
     UserTier = None
+    SubscriptionPlan = None
 
 
 if SQLALCHEMY_AVAILABLE:

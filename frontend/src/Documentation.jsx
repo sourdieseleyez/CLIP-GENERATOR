@@ -62,17 +62,24 @@ const Documentation = ({ onBack }) => {
                 <tr>
                   <th>Format</th>
                   <th>Extension</th>
-                  <th>Max Size</th>
+                  <th>Free Plan</th>
+                  <th>Pro/Agency</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td>MP4</td><td>.mp4</td><td>5 GB</td></tr>
-                <tr><td>MOV</td><td>.mov</td><td>5 GB</td></tr>
-                <tr><td>WebM</td><td>.webm</td><td>5 GB</td></tr>
-                <tr><td>AVI</td><td>.avi</td><td>5 GB</td></tr>
-                <tr><td>MKV</td><td>.mkv</td><td>5 GB</td></tr>
+                <tr><td>MP4</td><td>.mp4</td><td>500 MB</td><td>5 GB</td></tr>
+                <tr><td>MOV</td><td>.mov</td><td>500 MB</td><td>5 GB</td></tr>
+                <tr><td>AVI</td><td>.avi</td><td>500 MB</td><td>5 GB</td></tr>
+                <tr><td>MKV</td><td>.mkv</td><td>500 MB</td><td>5 GB</td></tr>
               </tbody>
             </table>
+
+            <div className="doc-highlight info">
+              <p>
+                <strong>Pro Tip:</strong> Use YouTube or direct URL input to bypass upload limits entirely. 
+                Our servers download and process the video directly, supporting videos of any size.
+              </p>
+            </div>
 
             <h3>Upload Methods</h3>
             <p><strong>Direct Upload:</strong> Drag and drop or click to select a file from your device.</p>

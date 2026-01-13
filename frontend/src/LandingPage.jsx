@@ -504,6 +504,7 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
               <p className="text-sm text-gray-500 mb-6">Free forever</p>
               <ul className="space-y-4 mb-8 text-sm">
                 <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> 3 AI Clips / mo</li>
+                <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> 500MB Upload Limit</li>
                 <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> 720p Resolution</li>
                 <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> Manual Downloads</li>
               </ul>
@@ -526,6 +527,7 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
               </div>
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3"><Check size={20} className="text-cyber-blue" /> <b>Unlimited</b> AI Clips</li>
+                <li className="flex items-center gap-3"><Check size={20} className="text-cyber-blue" /> <b>5GB</b> Upload Limit</li>
                 <li className="flex items-center gap-3"><Check size={20} className="text-cyber-blue" /> 1080p Crystal Clear</li>
                 <li className="flex items-center gap-3"><Check size={20} className="text-cyber-blue" /> Auto-Post to TikTok/Shorts</li>
                 <li className="flex items-center gap-3"><Check size={20} className="text-cyber-blue" /> Priority GPU Access</li>
@@ -544,6 +546,7 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
               <div className="text-4xl font-bold text-white mb-1">Custom</div>
               <p className="text-sm text-gray-500 mb-6 font-mono">Volume Discounts</p>
               <ul className="space-y-4 mb-8 text-sm">
+                <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> <b>5GB</b> Upload Limit</li>
                 <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> Multiple Channels</li>
                 <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> Custom Branding</li>
                 <li className="flex items-center gap-2"><Check size={16} className="text-green-500" /> Dedicated Account Mgr</li>
