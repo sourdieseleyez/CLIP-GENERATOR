@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import {
-  Twitch,
   Video,
   Share2,
   Check,
   Cpu,
   Play,
   ArrowRight,
-  Youtube
 } from 'lucide-react';
+import { SiTwitch, SiYoutube, SiKick } from 'react-icons/si';
 
 const LandingPage = ({ onGetStarted, onNavigate }) => {
   const { scrollYProgress } = useScroll();
@@ -18,7 +17,7 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
   // Demo Slideshow State
   const [demoStep, setDemoStep] = useState(0);
   const demoSteps = [
-    { title: "Connect", desc: "Link Twitch/Kick Account", icon: <Twitch size={40} /> },
+    { title: "Connect", desc: "Link Your Kick Account", icon: <SiKick size={40} /> },
     { title: "Analyze", desc: "AI Scans VODs & Chat", icon: <Cpu size={40} /> },
     { title: "Clip", desc: "Auto-Generate Viral Clips", icon: <Video size={40} /> },
     { title: "Share", desc: "One-Click Social Posting", icon: <Share2 size={40} /> }
@@ -351,9 +350,9 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
                       <motion.div
                         animate={{ x: [0, 10, 0] }}
                         transition={{ repeat: Infinity, duration: 2 }}
-                        className="w-24 h-24 bg-[#9146FF] rounded-2xl flex items-center justify-center shadow-[0_0_30px_#9146FF66]"
+                        className="w-24 h-24 bg-[#53FC18] rounded-2xl flex items-center justify-center shadow-[0_0_30px_#53FC1866]"
                       >
-                        <Twitch size={48} className="text-white" />
+                        <SiKick size={48} className="text-black" />
                       </motion.div>
                       <div className="flex flex-col gap-1 items-center">
                         <div className="flex gap-1">
@@ -439,7 +438,7 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
                         <div className="mt-2 text-xs text-green-400">Sent to TikTok</div>
                       </motion.div>
                       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 }} className="bg-black p-4 rounded-xl border border-white/10 flex flex-col items-center gap-2">
-                        <div className="p-2 bg-red-600 rounded-full text-white"><Youtube size={24} /></div>
+                        <div className="p-2 bg-red-600 rounded-full text-white"><SiYoutube size={24} /></div>
                         <div className="h-2 w-16 bg-gray-800 rounded"></div>
                         <div className="h-2 w-10 bg-gray-800 rounded"></div>
                         <div className="mt-2 text-xs text-green-400">Sent to Shorts</div>
@@ -463,20 +462,21 @@ const LandingPage = ({ onGetStarted, onNavigate }) => {
       <section className="py-10 border-y border-white/5 bg-black/40 backdrop-blur-sm relative z-20">
         <div className="container mx-auto px-6 text-center">
           <p className="text-sm font-mono text-gray-500 mb-6 uppercase tracking-widest">Optimized For</p>
-          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
+          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24">
             {/* YouTube */}
             <div className="flex items-center gap-3 group">
-              <Youtube size={32} className="text-red-600" />
-              <span className="font-bold text-2xl tracking-tighter text-white group-hover:text-red-500 transition-colors hidden md:block">YouTube</span>
+              <SiYoutube size={36} className="text-[#FF0000]" />
+              <span className="font-bold text-2xl tracking-tighter text-white group-hover:text-[#FF0000] transition-colors hidden md:block">YouTube</span>
             </div>
             {/* Twitch */}
             <div className="flex items-center gap-3 group">
-              <Twitch size={32} className="text-[#9146FF]" />
+              <SiTwitch size={36} className="text-[#9146FF]" />
               <span className="font-bold text-2xl tracking-tighter text-white group-hover:text-[#9146FF] transition-colors hidden md:block">Twitch</span>
             </div>
             {/* Kick */}
             <div className="flex items-center gap-3 group">
-              <div className="bg-white text-black font-black px-1.5 py-0.5 text-xl rounded-sm group-hover:bg-[#53FC18] transition-colors">KiCK</div>
+              <SiKick size={36} className="text-[#53FC18]" />
+              <span className="font-bold text-2xl tracking-tighter text-white group-hover:text-[#53FC18] transition-colors hidden md:block">Kick</span>
             </div>
           </div>
         </div>
